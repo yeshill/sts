@@ -2,6 +2,102 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <title>Bağlantı Testi</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { background: #2563eb; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 16px; margin-bottom: 10px; }
+        button:hover { background: #1d4ed8; }
+        .log-box { background: #1e293b; color: #a7f3d0; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap; min-height: 200px; margin-top: 15px; line-height: 1.5; }
+        .error-text { color: #fca5a5; }
+        .info-text { color: #93c5fd; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin-top:0;">E-Tablo Bağlantı Testi</h2>
+    <p>Aşağıdaki butonları kullanarak sistemin nerede tıkandığını bulalım.</p>
+
+    <button onclick="directBrowserTest()" style="background: #059669;">
+        1. Test: Doğrudan Tarayıcı İle Gönder (En Güveniliri)
+    </button>
+    <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
+        Bu butona bastığında yeni bir sekme açılacak. Ekranda <strong>"BAŞARILI"</strong> yazıyorsa Google tarafı sorunsuz çalışıyor demektir. Ekranda <strong>"SİSTEM HATASI"</strong> ile başlayan bir metin çıkarsa hatanın ne olduğunu göreceğiz. Sekme açıldığında ayrıca tablona bak, veri gelmiş mi kontrol et.
+    </p>
+
+    <button onclick="javascriptFetchTest()">
+        2. Test: Arka Planda (Sessiz) Gönder
+    </button>
+    <p style="font-size: 13px; color: #666;">
+        Test 1 başarılıysa, sınav uygulamasının kullandığı arka plan yöntemini test edeceğiz. Sonuçlar aşağıdaki siyah ekrana düşecek.
+    </p>
+
+    <div class="log-box" id="console-log">Sistem hazır. Test başlatılması bekleniyor...</div>
+</div>
+
+<script>
+    // Yeni linkin buraya eklendi
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmHeTKkb-JPoNgJbplhFLc-RKGjEo1YbvZInVgYE8xEinNOZlqOMSy6YfzTO2v_JAY/exec";
+
+    const testParams = new URLSearchParams({
+        studentName: "Test_Ayse",
+        questionId: "99",
+        unit: "Hata_Ayiklama",
+        kazanim: "Baglanti_Testi",
+        studentAnswer: "A",
+        correctAnswer: "A",
+        result: "DOGRU"
+    }).toString();
+
+    const fullUrl = SCRIPT_URL + "?" + testParams;
+
+    function logToScreen(message, type = 'normal') {
+        const logBox = document.getElementById('console-log');
+        const time = new Date().toLocaleTimeString();
+        let colorStyle = "";
+        
+        if (type === 'error') colorStyle = "class='error-text'";
+        if (type === 'info') colorStyle = "class='info-text'";
+
+        logBox.innerHTML += `\n<span ${colorStyle}>[${time}] ${message}</span>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // TEST 1: Yeni Sekmede Açma (CORS hatalarını atlar, direkt Google'ın tepkisini ölçer)
+    function directBrowserTest() {
+        logToScreen("Test 1 Başlatıldı: Yeni sekmede Google Apps Script'e gidiliyor...", "info");
+        window.open(fullUrl, '_blank');
+        logToScreen("Yeni sekmedeki mesajı ve E-Tablonu kontrol et.", "info");
+    }
+
+    // TEST 2: Uygulamanın kullandığı Fetch (Arka plan) yöntemi
+    async function javascriptFetchTest() {
+        logToScreen("\nTest 2 Başlatıldı: Arka planda veri gönderiliyor...", "info");
+        
+        try {
+            // mode: 'no-cors' kullanıyoruz çünkü Google Apps Script yönlendirme yapar
+            const response = await fetch(fullUrl, { 
+                method: 'GET',
+                mode: 'no-cors' 
+            });
+            
+            // no-cors modunda status 0 döner, bu normaldir.
+            logToScreen("Fetch isteği tamamlandı. (Not: no-cors modunda tarayıcı tam yanıtı gizler).");
+            logToScreen("Lütfen E-Tablonu kontrol et. 'Test_Ayse' adında bir satır eklendi mi?", "info");
+            
+        } catch (error) {
+            logToScreen("HATA OLUŞTU: İletişim kurulamadı.", "error");
+            logToScreen(error.message, "error");
+        }
+    }
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>İngilizce Seviye Tespit Sınavı</title>
     <script src="https://cdn.tailwindcss.com"></script>
