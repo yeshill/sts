@@ -2,6 +2,336 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meryem İçin STS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background-color: #fdf4ff; /* Çok uçuk pembe/mor arka plan */
+            background-image: radial-gradient(#fbcfe8 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+        .game-btn {
+            box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+            transition: all 0.1s ease;
+        }
+        .game-btn:active {
+            box-shadow: 0 0 0 rgba(0,0,0,0.15);
+            transform: translateY(6px);
+        }
+        .option-btn { transition: all 0.2s ease; border-width: 4px; }
+        .option-selected { border-color: #a855f7; background-color: #f3e8ff; color: #7e22ce; font-weight: 800; transform: scale(1.02); }
+        .option-unselected { border-color: #e2e8f0; color: #475569; font-weight: 600; }
+        .option-unselected:hover { border-color: #fbcfe8; background-color: #fdf2f8; color: #db2777; transform: scale(1.01); }
+        
+        /* Şirin Progress Bar Animasyonu */
+        @keyframes pulse-bg {
+            0% { background-color: #f472b6; }
+            50% { background-color: #a855f7; }
+            100% { background-color: #f472b6; }
+        }
+        .progress-magic { animation: pulse-bg 3s infinite; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+    <div id="app" class="max-w-3xl mx-auto p-4 md:p-6 min-h-screen flex flex-col justify-center relative z-10">
+        
+        <div id="start-screen" class="bg-white rounded-[2rem] shadow-2xl p-8 md:p-12 text-center max-w-md w-full mx-auto border-8 border-pink-100 relative overflow-hidden">
+            <div class="text-6xl mb-4 animate-bounce">🦄</div>
+            <h1 class="text-4xl font-black text-purple-600 mb-2">Meryem İçin STS</h1>
+            <p class="text-pink-500 font-bold mb-8 text-lg">İngilizce macerasına hazır mısın?</p>
+            
+            <button 
+                onclick="startQuiz()"
+                class="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-black py-4 px-6 rounded-full text-2xl game-btn"
+            >
+                BAŞLA 🚀
+            </button>
+        </div>
+
+        <div id="quiz-screen" class="hidden">
+            <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 border-4 border-purple-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-black text-purple-500 flex items-center gap-2"><span>⭐</span> Meryem'in Testi</h2>
+                    <span id="question-counter" class="text-lg font-black text-white bg-pink-500 px-4 py-1 rounded-full shadow-md">
+                        1 / 30
+                    </span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-4 shadow-inner overflow-hidden border-2 border-slate-200">
+                    <div id="progress-bar" class="progress-magic h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-2xl p-6 md:p-8 border-4 border-pink-100">
+                <div class="mb-4 text-center">
+                    <span id="unit-badge" class="inline-block bg-orange-100 text-orange-600 px-4 py-1 rounded-full text-sm font-black tracking-wider uppercase border-2 border-orange-200">
+                        Unit
+                    </span>
+                </div>
+                
+                <h3 id="question-text" class="text-2xl md:text-3xl font-black text-slate-700 mb-8 whitespace-pre-wrap text-center leading-relaxed">
+                    Soru Metni
+                </h3>
+
+                <div id="options-container" class="space-y-4">
+                    </div>
+
+                <div class="flex justify-between items-center mt-10 pt-6">
+                    <button id="prev-btn" onclick="prevQuestion()" class="flex items-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-600 px-6 py-3 rounded-full font-black game-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                        Geri
+                    </button>
+
+                    <button id="next-btn" onclick="nextQuestion()" class="flex items-center gap-2 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white px-8 py-3 rounded-full font-black text-lg game-btn">
+                        İleri
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+
+                    <button id="finish-btn" onclick="finishQuiz()" class="hidden flex items-center gap-2 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white px-8 py-3 rounded-full font-black text-lg game-btn animate-pulse">
+                        Bitir 🏆
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-screen" class="hidden bg-white rounded-[2.5rem] shadow-2xl p-8 text-center border-8 border-emerald-100">
+            <div class="text-7xl mb-4">🎉</div>
+            <h1 class="text-4xl font-black text-emerald-500 mb-2">Harikasın Meryem!</h1>
+            <p class="text-xl font-bold text-slate-500 mb-8">Testi başarıyla tamamladın!</p>
+            
+            <div class="flex justify-center gap-4 sm:gap-6 mb-10 flex-wrap">
+                <div class="bg-emerald-100 border-4 border-emerald-200 text-emerald-700 p-6 rounded-3xl min-w-[120px] shadow-sm transform rotate-1">
+                    <div id="correct-count" class="text-5xl font-black mb-1">0</div>
+                    <div class="text-lg font-black">Doğru 🤩</div>
+                </div>
+                <div class="bg-rose-100 border-4 border-rose-200 text-rose-700 p-6 rounded-3xl min-w-[120px] shadow-sm transform -rotate-2">
+                    <div id="wrong-count" class="text-5xl font-black mb-1">0</div>
+                    <div class="text-lg font-black">Yanlış 🧐</div>
+                </div>
+            </div>
+
+            <div class="flex justify-center mb-10">
+                <button onclick="restartQuiz()" class="flex items-center justify-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-8 py-4 rounded-full font-black text-xl game-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Baştan Başla 🎈
+                </button>
+            </div>
+
+            <div class="text-left border-t-4 border-dashed border-slate-200 pt-8 mt-8">
+                <h2 class="text-xl font-black text-slate-400 mb-6 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-9 5 18 2-9h5"/></svg> Öğretmen Notları:</h2>
+                <div id="error-analysis" class="space-y-4">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- AYARLAR ---
+        const GOOGLE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzGmeDm1XSfmzaFxFQEt4o7qAScfBwPbsxtk1skcIyu2XKLaI-2QIILMO67eeYZJ_45/exec";
+        
+        // İsim sorma ekranını kaldırdığımız için Meryem'i sabitliyoruz
+        const studentName = "Meryem"; 
+
+        // --- SORU VERİTABANI ---
+        const questions = [
+            // 3rd GRADE REVIEW
+            { id: 1, unit: "3rd Grade - My Family", question: "This is my mother. ______ is a doctor.", options: ["A) He", "B) She", "C) It", "D) I"], answer: 1, kazanim: "Grammar: Subject Pronouns (He/She/It kullanımı)" },
+            { id: 2, unit: "3rd Grade - Feelings", question: "A: Are you thirsty?\nB: Yes, I want some ________.", options: ["A) bread", "B) book", "C) water", "D) toy"], answer: 2, kazanim: "Vocabulary: Temel ihtiyaçlar ve duygular" },
+            { id: 3, unit: "3rd Grade - My House", question: "Where is the cat? It is ________ the table. (Masanın altında)", options: ["A) in", "B) on", "C) under", "D) behind"], answer: 2, kazanim: "Grammar: Prepositions of Place (in, on, under)" },
+            { id: 4, unit: "3rd Grade - Weather", question: "It is rainy today. Take your ________.", options: ["A) sunglasses", "B) umbrella", "C) shorts", "D) hat"], answer: 1, kazanim: "Vocabulary: Hava durumu ve kıyafetler" },
+            { id: 5, unit: "3rd Grade - Toys & Numbers", question: "I have ________ (3) kites and ________ (2) balls.", options: ["A) three / two", "B) two / three", "C) four / one", "D) three / four"], answer: 0, kazanim: "Vocabulary/Grammar: Sayılar (1-10) ve çoğul isimler" },
+
+            // UNIT 1: CLASSROOM RULES
+            { id: 6, unit: "Unit 1: Classroom Rules", question: "It is very cold. ________ the window, please.", options: ["A) Open", "B) Close", "C) Clean", "D) Look at"], answer: 1, kazanim: "Vocabulary: Sınıf içi emir cümleleri (Imperatives)" },
+            { id: 7, unit: "Unit 1: Classroom Rules", question: "A: ________ I come in?\nB: Yes, you may.", options: ["A) Am", "B) Do", "C) Are", "D) May"], answer: 3, kazanim: "Grammar: İzin isteme yapıları (May I...?)" },
+            { id: 8, unit: "Unit 1: Classroom Rules", question: "What is the number '45' in English?", options: ["A) Fourteen-five", "B) Forty-five", "C) Fifty-four", "D) Thirty-five"], answer: 1, kazanim: "Vocabulary: 1-50 arası sayılar" },
+
+            // UNIT 2: NATIONALITY
+            { id: 9, unit: "Unit 2: Nationality", question: "A: Where are you ________?\nB: I am from Turkey.", options: ["A) in", "B) do", "C) from", "D) are"], answer: 2, kazanim: "Grammar: 'Where are you from?' soru kalıbı" },
+            { id: 10, unit: "Unit 2: Nationality", question: "He is from Germany. He is ________.", options: ["A) German", "B) Germany", "C) French", "D) Turkish"], answer: 0, kazanim: "Vocabulary: Ülkeler ve Milliyetler (Country vs. Nationality)" },
+            { id: 11, unit: "Unit 2: Nationality", question: "İzmir is in the ________ of Turkey. (Batısında)", options: ["A) East", "B) West", "C) North", "D) South"], answer: 1, kazanim: "Vocabulary: Yönler (Compass directions)" },
+
+            // UNIT 3: CARTOON CHARACTERS
+            { id: 12, unit: "Unit 3: Cartoon Characters", question: "A fish can swim, but it ________ fly.", options: ["A) can", "B) can't", "C) is", "D) isn't"], answer: 1, kazanim: "Grammar: Yetenek bildiren yapılar (Can / Can't)" },
+            { id: 13, unit: "Unit 3: Cartoon Characters", question: "A: Can she play the guitar?\nB: Yes, she ________.", options: ["A) do", "B) does", "C) can", "D) is"], answer: 2, kazanim: "Grammar: 'Can' ile kısa cevaplar" },
+            { id: 14, unit: "Unit 3: Cartoon Characters", question: "Superman is very strong. He can ________ a car.", options: ["A) read", "B) fly", "C) lift", "D) catch"], answer: 2, kazanim: "Vocabulary: Eylem fiilleri (Action verbs - lift, catch, dive vs.)" },
+
+            // UNIT 4: FREE TIME
+            { id: 15, unit: "Unit 4: Free Time", question: "A: Do you like playing chess?\nB: No, I ________.", options: ["A) do", "B) am not", "C) don't", "D) doesn't"], answer: 2, kazanim: "Grammar: Geniş Zaman kısa cevaplar (Do/Don't)" },
+            { id: 16, unit: "Unit 4: Free Time", question: "I like ________ a bike in my free time.", options: ["A) ride", "B) rides", "C) riding", "D) rode"], answer: 2, kazanim: "Grammar: Like + V(ing) kuralı" },
+            { id: 17, unit: "Unit 4: Free Time", question: "She ________ reading comics. She thinks it is fun.", options: ["A) like", "B) likes", "C) liking", "D) don't like"], answer: 1, kazanim: "Grammar: 3. Tekil şahıslarda Geniş Zaman (He/She/It likes)" },
+
+            // UNIT 5: MY DAY
+            { id: 18, unit: "Unit 5: My Day", question: "What time is it? (08:00)", options: ["A) It is eight o'clock.", "B) It is nine o'clock.", "C) It is half past eight.", "D) It is seven o'clock."], answer: 0, kazanim: "Vocabulary/Grammar: Saatleri söyleme (O'clock)" },
+            { id: 19, unit: "Unit 5: My Day", question: "I ________ up at 7 o'clock every morning.", options: ["A) get", "B) brush", "C) go", "D) wash"], answer: 0, kazanim: "Vocabulary: Günlük rutin fiilleri (Daily routines)" },
+            { id: 20, unit: "Unit 5: My Day", question: "I go to bed ________ the evening.", options: ["A) on", "B) in", "C) at", "D) under"], answer: 1, kazanim: "Grammar: Zaman edatları (in the morning/afternoon/evening)" },
+            { id: 21, unit: "Unit 5: My Day", question: "What time is it? (10:30)", options: ["A) It is ten o'clock.", "B) It is half past ten.", "C) It is half past eleven.", "D) It is ten past thirty."], answer: 1, kazanim: "Vocabulary/Grammar: Buçuklu saatler (Half past)" },
+
+            // UNIT 6: FUN WITH SCIENCE
+            { id: 22, unit: "Unit 6: Fun with Science", question: "________ the water into the glass.", options: ["A) Cut", "B) Mix", "C) Pour", "D) Fold"], answer: 2, kazanim: "Vocabulary: Bilimsel yönergeler (Pour, mix, fold, cut)" },
+            { id: 23, unit: "Unit 6: Fun with Science", question: "Where is the magnifier? It is ________ the tube. (Tüpün önünde)", options: ["A) in front of", "B) behind", "C) near", "D) under"], answer: 0, kazanim: "Grammar: Yeni yer edatları (in front of, behind, near)" },
+            { id: 24, unit: "Unit 6: Fun with Science", question: "Let's ________ some seeds in the garden.", options: ["A) melt", "B) plant", "C) freeze", "D) mix"], answer: 1, kazanim: "Vocabulary: Bilim ünitesi kelimeleri (plant, seeds)" },
+            { id: 25, unit: "Unit 6: Fun with Science", question: "Don't ________ the hot water! It is dangerous.", options: ["A) look", "B) listen", "C) touch", "D) read"], answer: 2, kazanim: "Grammar: Olumsuz emir cümleleri (Don't...)" },
+
+            // UNIT 7: JOBS
+            { id: 26, unit: "Unit 7: Jobs", question: "A: What is your job?\nB: I am a ________. I work at a school.", options: ["A) doctor", "B) teacher", "C) farmer", "D) chef"], answer: 1, kazanim: "Vocabulary: Meslekler (Jobs/Professions)" },
+            { id: 27, unit: "Unit 7: Jobs", question: "Where does a doctor work?", options: ["A) At a hospital", "B) At a school", "C) At a police station", "D) On a farm"], answer: 0, kazanim: "Vocabulary: Çalışma yerleri (Workplaces)" },
+            { id: 28, unit: "Unit 7: Jobs", question: "He is a pilot. He ________ planes.", options: ["A) drives", "B) rides", "C) flies", "D) catches"], answer: 2, kazanim: "Vocabulary/Grammar: Mesleklerin yaptıkları eylemler ve Geniş Zaman" },
+            { id: 29, unit: "Unit 7: Jobs", question: "A: What do you do?\nB: I am a vet. I help ________ animals.", options: ["A) sick", "B) healthy", "C) tall", "D) rich"], answer: 0, kazanim: "Vocabulary: Mesleki tanımlamalar (sick animals, plant trees vb.)" },
+            { id: 30, unit: "Unit 7: Jobs", question: "My father is a chef. ________ works at a restaurant.", options: ["A) I", "B) She", "C) He", "D) They"], answer: 2, kazanim: "Grammar: Aile bireyleri ve mesleklerde Pronoun kullanımı" }
+        ];
+
+        let currentQuestionIndex = 0;
+        let answers = {};
+
+        function startQuiz() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            
+            document.getElementById('question-counter').innerText = `${currentQuestionIndex + 1} / ${questions.length}`;
+            const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+            
+            document.getElementById('unit-badge').innerText = q.unit;
+            document.getElementById('question-text').innerText = q.question;
+
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                const isSelected = answers[currentQuestionIndex] === idx;
+                
+                btn.className = `w-full text-left p-4 rounded-2xl option-btn text-lg ${isSelected ? 'option-selected' : 'option-unselected bg-slate-50'}`;
+                btn.innerText = opt;
+                btn.onclick = () => selectOption(idx);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('prev-btn').style.visibility = currentQuestionIndex === 0 ? 'hidden' : 'visible';
+
+            if (currentQuestionIndex === questions.length - 1) {
+                document.getElementById('next-btn').classList.add('hidden');
+                document.getElementById('finish-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('next-btn').classList.remove('hidden');
+                document.getElementById('finish-btn').classList.add('hidden');
+            }
+        }
+
+        function selectOption(idx) {
+            answers[currentQuestionIndex] = idx;
+            renderQuestion();
+        }
+
+        function sendToGoogleSheets(qIndex, selectedOptIndex) {
+            if (!GOOGLE_WEBAPP_URL) return;
+            
+            const q = questions[qIndex];
+            const isCorrect = selectedOptIndex === q.answer;
+            const studentAnsText = selectedOptIndex !== undefined ? q.options[selectedOptIndex] : "Boş Bıraktı";
+            const correctAnsText = q.options[q.answer];
+
+            const url = new URL(GOOGLE_WEBAPP_URL);
+            url.searchParams.append("studentName", studentName); // Meryem otomatik gider
+            url.searchParams.append("questionId", q.id);
+            url.searchParams.append("unit", q.unit);
+            url.searchParams.append("kazanim", q.kazanim);
+            url.searchParams.append("studentAnswer", studentAnsText);
+            url.searchParams.append("correctAnswer", correctAnsText);
+            url.searchParams.append("result", isCorrect ? "DOĞRU" : "YANLIŞ");
+
+            fetch(url.toString(), { method: 'GET', mode: 'no-cors' })
+                .catch(err => console.error("E-Tabloya gönderim hatası:", err));
+        }
+
+        function nextQuestion() {
+            if (answers[currentQuestionIndex] !== undefined) {
+                sendToGoogleSheets(currentQuestionIndex, answers[currentQuestionIndex]);
+            }
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        function finishQuiz() {
+            const answeredCount = Object.keys(answers).length;
+            if (answeredCount < questions.length) {
+                if(!confirm("Cevaplamadığın sorular var Meryem. Yine de bitirmek istiyor musun? 🙈")) {
+                    return;
+                }
+            }
+            if (answers[currentQuestionIndex] !== undefined) {
+                sendToGoogleSheets(currentQuestionIndex, answers[currentQuestionIndex]);
+            }
+            showResults();
+        }
+
+        function showResults() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+
+            let correct = 0;
+            let wrongListHTML = '';
+
+            questions.forEach((q, idx) => {
+                const isCorrect = answers[idx] === q.answer;
+                
+                if (isCorrect) {
+                    correct++;
+                } else {
+                    wrongListHTML += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col gap-2">
+                            <span class="inline-block bg-slate-200 text-slate-700 text-xs px-3 py-1 rounded-full font-bold self-start">
+                                Soru ${q.id} | ${q.unit}
+                            </span>
+                            <p class="text-sm font-bold text-slate-600">Eksik Kazanım: <span class="text-rose-500">${q.kazanim}</span></p>
+                        </div>
+                    `;
+                }
+            });
+
+            if (correct === questions.length) {
+                wrongListHTML = `
+                    <div class="text-emerald-500 font-black text-center p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-200">
+                        Hiç hata yok! Muhteşemsin! 🌟
+                    </div>
+                `;
+            }
+            
+            document.getElementById('correct-count').innerText = correct;
+            document.getElementById('wrong-count').innerText = questions.length - correct;
+            document.getElementById('error-analysis').innerHTML = wrongListHTML;
+        }
+
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            answers = {};
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
     <title>Bağlantı Testi</title>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
