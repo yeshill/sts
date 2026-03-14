@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İngilizce Seviye Tespit Sınavı</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .option-btn { transition: all 0.2s ease; }
+        .option-selected { border-color: #3b82f6; background-color: #eff6ff; color: #1d4ed8; font-weight: 600; }
+        .option-unselected { border-color: #e2e8f0; color: #334155; }
+        .option-unselected:hover { border-color: #93c5fd; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+    <!-- Ana Konteyner -->
+    <div id="app" class="max-w-3xl mx-auto p-4 md:p-6 min-h-screen flex flex-col justify-center">
+        
+        <!-- 1. GİRİŞ EKRANI -->
+        <div id="start-screen" class="bg-white rounded-2xl shadow-lg p-8 text-center max-w-md w-full mx-auto">
+            <h1 class="text-2xl font-bold text-slate-800 mb-4">İngilizce Seviye Tespit</h1>
+            <p class="text-slate-600 mb-6 text-sm">
+                Öğrenci testi çözerken her <strong>"Sonraki"</strong> butonuna basıldığında sonuçlar otomatik olarak öğretmenin Google E-Tablosuna kaydedilir.
+            </p>
+            <div class="text-left mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">Öğrencinin Adı Soyadı</label>
+                <input 
+                    type="text" 
+                    id="student-name"
+                    placeholder="Örn: Ali Yılmaz" 
+                    class="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            <button 
+                onclick="startQuiz()"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+            >
+                Teste Başla
+            </button>
+        </div>
+
+        <!-- 2. TEST EKRANI -->
+        <div id="quiz-screen" class="hidden">
+            <!-- Üst Bilgi ve İlerleme -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-700">Seviye Tespit Sınavı</h2>
+                    <span id="question-counter" class="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                        1 / 30
+                    </span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Soru Kartı -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                <div class="mb-4">
+                    <span id="unit-badge" class="text-xs font-bold tracking-wider text-slate-400 uppercase">
+                        Unit
+                    </span>
+                </div>
+                
+                <h3 id="question-text" class="text-xl md:text-2xl font-bold text-slate-800 mb-8 whitespace-pre-wrap">
+                    Soru Metni
+                </h3>
+
+                <div id="options-container" class="space-y-3">
+                    <!-- Seçenekler JS ile buraya eklenecek -->
+                </div>
+
+                <!-- Yönlendirme Butonları -->
+                <div class="flex justify-between items-center mt-10 pt-6 border-t border-slate-100">
+                    <button id="prev-btn" onclick="prevQuestion()" class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-slate-600 hover:bg-slate-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                        Önceki
+                    </button>
+
+                    <button id="next-btn" onclick="nextQuestion()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors shadow-sm">
+                        Sonraki
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+
+                    <button id="finish-btn" onclick="finishQuiz()" class="hidden flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors shadow-sm">
+                        Testi Bitir
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. SONUÇ EKRANI -->
+        <div id="results-screen" class="hidden bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 text-blue-600 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            </div>
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">Test Tamamlandı!</h1>
+            <p class="text-lg text-slate-600 mb-6">Öğrencinin 4. Sınıf seviye tespit sonucu aşağıdadır.</p>
+            
+            <div class="flex justify-center gap-4 sm:gap-8 mb-8 flex-wrap">
+                <div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl min-w-[100px] sm:min-w-[120px]">
+                    <div id="correct-count" class="text-3xl font-bold">0</div>
+                    <div class="text-sm font-medium">Doğru</div>
+                </div>
+                <div class="bg-rose-50 text-rose-700 p-4 rounded-xl min-w-[100px] sm:min-w-[120px]">
+                    <div id="wrong-count" class="text-3xl font-bold">0</div>
+                    <div class="text-sm font-medium">Yanlış/Boş</div>
+                </div>
+                <div class="bg-blue-50 text-blue-700 p-4 rounded-xl min-w-[100px] sm:min-w-[120px]">
+                    <div id="score-percentage" class="text-3xl font-bold">%0</div>
+                    <div class="text-sm font-medium">Başarı Puanı</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-10">
+                <button onclick="exportToCSV()" class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    E-Tablolara Aktar (CSV)
+                </button>
+                <button onclick="restartQuiz()" class="flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Yeni Öğrenci
+                </button>
+            </div>
+
+            <div class="text-left border-t pt-8">
+                <h2 class="text-xl font-bold text-slate-800 mb-6">Ders Planlaması İçin Hata Analizi:</h2>
+                <div id="error-analysis" class="space-y-4">
+                    <!-- Hatalı sorular buraya eklenecek -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onay Modalı -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-auto">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Eksik Sorular Var</h3>
+            <p class="text-slate-600 mb-6">Cevaplamadığınız sorular bulunuyor. Yine de testi bitirmek istiyor musunuz?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-5 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors">İptal</button>
+                <button onclick="forceFinishQuiz()" class="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">Yine de Bitir</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- AYARLAR ---
+        // Kullanıcının sağladığı Google Apps Script Web App URL'si
+        const GOOGLE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwwqcpIus6oK6eLTB9cEZNQFvAM_vCG_4OthTHaamGfrQT0DWfHs85BIX_OpgrJO-bf/exec";
+
+        // --- SORU VERİTABANI ---
+        const questions = [
+            // 3rd GRADE REVIEW
+            { id: 1, unit: "3rd Grade - My Family", question: "This is my mother. ______ is a doctor.", options: ["A) He", "B) She", "C) It", "D) I"], answer: 1, kazanim: "Grammar: Subject Pronouns (He/She/It kullanımı)" },
+            { id: 2, unit: "3rd Grade - Feelings", question: "A: Are you thirsty?\nB: Yes, I want some ________.", options: ["A) bread", "B) book", "C) water", "D) toy"], answer: 2, kazanim: "Vocabulary: Temel ihtiyaçlar ve duygular" },
+            { id: 3, unit: "3rd Grade - My House", question: "Where is the cat? It is ________ the table. (Masanın altında)", options: ["A) in", "B) on", "C) under", "D) behind"], answer: 2, kazanim: "Grammar: Prepositions of Place (in, on, under)" },
+            { id: 4, unit: "3rd Grade - Weather", question: "It is rainy today. Take your ________.", options: ["A) sunglasses", "B) umbrella", "C) shorts", "D) hat"], answer: 1, kazanim: "Vocabulary: Hava durumu ve kıyafetler" },
+            { id: 5, unit: "3rd Grade - Toys & Numbers", question: "I have ________ (3) kites and ________ (2) balls.", options: ["A) three / two", "B) two / three", "C) four / one", "D) three / four"], answer: 0, kazanim: "Vocabulary/Grammar: Sayılar (1-10) ve çoğul isimler" },
+
+            // UNIT 1: CLASSROOM RULES
+            { id: 6, unit: "Unit 1: Classroom Rules", question: "It is very cold. ________ the window, please.", options: ["A) Open", "B) Close", "C) Clean", "D) Look at"], answer: 1, kazanim: "Vocabulary: Sınıf içi emir cümleleri (Imperatives)" },
+            { id: 7, unit: "Unit 1: Classroom Rules", question: "A: ________ I come in?\nB: Yes, you may.", options: ["A) Am", "B) Do", "C) Are", "D) May"], answer: 3, kazanim: "Grammar: İzin isteme yapıları (May I...?)" },
+            { id: 8, unit: "Unit 1: Classroom Rules", question: "What is the number '45' in English?", options: ["A) Fourteen-five", "B) Forty-five", "C) Fifty-four", "D) Thirty-five"], answer: 1, kazanim: "Vocabulary: 1-50 arası sayılar" },
+
+            // UNIT 2: NATIONALITY
+            { id: 9, unit: "Unit 2: Nationality", question: "A: Where are you ________?\nB: I am from Turkey.", options: ["A) in", "B) do", "C) from", "D) are"], answer: 2, kazanim: "Grammar: 'Where are you from?' soru kalıbı" },
+            { id: 10, unit: "Unit 2: Nationality", question: "He is from Germany. He is ________.", options: ["A) German", "B) Germany", "C) French", "D) Turkish"], answer: 0, kazanim: "Vocabulary: Ülkeler ve Milliyetler (Country vs. Nationality)" },
+            { id: 11, unit: "Unit 2: Nationality", question: "İzmir is in the ________ of Turkey. (Batısında)", options: ["A) East", "B) West", "C) North", "D) South"], answer: 1, kazanim: "Vocabulary: Yönler (Compass directions)" },
+
+            // UNIT 3: CARTOON CHARACTERS
+            { id: 12, unit: "Unit 3: Cartoon Characters", question: "A fish can swim, but it ________ fly.", options: ["A) can", "B) can't", "C) is", "D) isn't"], answer: 1, kazanim: "Grammar: Yetenek bildiren yapılar (Can / Can't)" },
+            { id: 13, unit: "Unit 3: Cartoon Characters", question: "A: Can she play the guitar?\nB: Yes, she ________.", options: ["A) do", "B) does", "C) can", "D) is"], answer: 2, kazanim: "Grammar: 'Can' ile kısa cevaplar" },
+            { id: 14, unit: "Unit 3: Cartoon Characters", question: "Superman is very strong. He can ________ a car.", options: ["A) read", "B) fly", "C) lift", "D) catch"], answer: 2, kazanim: "Vocabulary: Eylem fiilleri (Action verbs - lift, catch, dive vs.)" },
+
+            // UNIT 4: FREE TIME
+            { id: 15, unit: "Unit 4: Free Time", question: "A: Do you like playing chess?\nB: No, I ________.", options: ["A) do", "B) am not", "C) don't", "D) doesn't"], answer: 2, kazanim: "Grammar: Geniş Zaman kısa cevaplar (Do/Don't)" },
+            { id: 16, unit: "Unit 4: Free Time", question: "I like ________ a bike in my free time.", options: ["A) ride", "B) rides", "C) riding", "D) rode"], answer: 2, kazanim: "Grammar: Like + V(ing) kuralı" },
+            { id: 17, unit: "Unit 4: Free Time", question: "She ________ reading comics. She thinks it is fun.", options: ["A) like", "B) likes", "C) liking", "D) don't like"], answer: 1, kazanim: "Grammar: 3. Tekil şahıslarda Geniş Zaman (He/She/It likes)" },
+
+            // UNIT 5: MY DAY
+            { id: 18, unit: "Unit 5: My Day", question: "What time is it? (08:00)", options: ["A) It is eight o'clock.", "B) It is nine o'clock.", "C) It is half past eight.", "D) It is seven o'clock."], answer: 0, kazanim: "Vocabulary/Grammar: Saatleri söyleme (O'clock)" },
+            { id: 19, unit: "Unit 5: My Day", question: "I ________ up at 7 o'clock every morning.", options: ["A) get", "B) brush", "C) go", "D) wash"], answer: 0, kazanim: "Vocabulary: Günlük rutin fiilleri (Daily routines)" },
+            { id: 20, unit: "Unit 5: My Day", question: "I go to bed ________ the evening.", options: ["A) on", "B) in", "C) at", "D) under"], answer: 1, kazanim: "Grammar: Zaman edatları (in the morning/afternoon/evening)" },
+            { id: 21, unit: "Unit 5: My Day", question: "What time is it? (10:30)", options: ["A) It is ten o'clock.", "B) It is half past ten.", "C) It is half past eleven.", "D) It is ten past thirty."], answer: 1, kazanim: "Vocabulary/Grammar: Buçuklu saatler (Half past)" },
+
+            // UNIT 6: FUN WITH SCIENCE
+            { id: 22, unit: "Unit 6: Fun with Science", question: "________ the water into the glass.", options: ["A) Cut", "B) Mix", "C) Pour", "D) Fold"], answer: 2, kazanim: "Vocabulary: Bilimsel yönergeler (Pour, mix, fold, cut)" },
+            { id: 23, unit: "Unit 6: Fun with Science", question: "Where is the magnifier? It is ________ the tube. (Tüpün önünde)", options: ["A) in front of", "B) behind", "C) near", "D) under"], answer: 0, kazanim: "Grammar: Yeni yer edatları (in front of, behind, near)" },
+            { id: 24, unit: "Unit 6: Fun with Science", question: "Let's ________ some seeds in the garden.", options: ["A) melt", "B) plant", "C) freeze", "D) mix"], answer: 1, kazanim: "Vocabulary: Bilim ünitesi kelimeleri (plant, seeds)" },
+            { id: 25, unit: "Unit 6: Fun with Science", question: "Don't ________ the hot water! It is dangerous.", options: ["A) look", "B) listen", "C) touch", "D) read"], answer: 2, kazanim: "Grammar: Olumsuz emir cümleleri (Don't...)" },
+
+            // UNIT 7: JOBS
+            { id: 26, unit: "Unit 7: Jobs", question: "A: What is your job?\nB: I am a ________. I work at a school.", options: ["A) doctor", "B) teacher", "C) farmer", "D) chef"], answer: 1, kazanim: "Vocabulary: Meslekler (Jobs/Professions)" },
+            { id: 27, unit: "Unit 7: Jobs", question: "Where does a doctor work?", options: ["A) At a hospital", "B) At a school", "C) At a police station", "D) On a farm"], answer: 0, kazanim: "Vocabulary: Çalışma yerleri (Workplaces)" },
+            { id: 28, unit: "Unit 7: Jobs", question: "He is a pilot. He ________ planes.", options: ["A) drives", "B) rides", "C) flies", "D) catches"], answer: 2, kazanim: "Vocabulary/Grammar: Mesleklerin yaptıkları eylemler ve Geniş Zaman" },
+            { id: 29, unit: "Unit 7: Jobs", question: "A: What do you do?\nB: I am a vet. I help ________ animals.", options: ["A) sick", "B) healthy", "C) tall", "D) rich"], answer: 0, kazanim: "Vocabulary: Mesleki tanımlamalar (sick animals, plant trees vb.)" },
+            { id: 30, unit: "Unit 7: Jobs", question: "My father is a chef. ________ works at a restaurant.", options: ["A) I", "B) She", "C) He", "D) They"], answer: 2, kazanim: "Grammar: Aile bireyleri ve mesleklerde Pronoun kullanımı" }
+        ];
+
+        // --- UYGULAMA DURUMU ---
+        let currentQuestionIndex = 0;
+        let answers = {};
+        let studentName = "";
+
+        // --- FONKSİYONLAR ---
+        function startQuiz() {
+            const nameInput = document.getElementById('student-name').value.trim();
+            if (!nameInput) {
+                // Görsel uyarı efekti
+                document.getElementById('student-name').classList.add('ring-2', 'ring-rose-500', 'border-rose-500');
+                setTimeout(() => document.getElementById('student-name').classList.remove('ring-2', 'ring-rose-500', 'border-rose-500'), 1500);
+                return;
+            }
+            studentName = nameInput;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            
+            // Üst bilgiler
+            document.getElementById('question-counter').innerText = `${currentQuestionIndex + 1} / ${questions.length}`;
+            const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+            
+            document.getElementById('unit-badge').innerText = q.unit;
+            document.getElementById('question-text').innerText = q.question;
+
+            // Seçenekleri oluştur
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                const isSelected = answers[currentQuestionIndex] === idx;
+                
+                btn.className = `w-full text-left p-4 rounded-xl border-2 option-btn ${isSelected ? 'option-selected' : 'option-unselected'}`;
+                btn.innerText = opt;
+                btn.onclick = () => selectOption(idx);
+                optionsContainer.appendChild(btn);
+            });
+
+            // Buton durumları
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('prev-btn').className = `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${currentQuestionIndex === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'}`;
+
+            if (currentQuestionIndex === questions.length - 1) {
+                document.getElementById('next-btn').classList.add('hidden');
+                document.getElementById('finish-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('next-btn').classList.remove('hidden');
+                document.getElementById('finish-btn').classList.add('hidden');
+            }
+        }
+
+        function selectOption(idx) {
+            answers[currentQuestionIndex] = idx;
+            renderQuestion(); // Seçimi göstermek için yeniden çiz
+        }
+
+        function sendToGoogleSheets(qIndex, selectedOptIndex) {
+            if (!GOOGLE_WEBAPP_URL) return;
+            
+            const q = questions[qIndex];
+            const isCorrect = selectedOptIndex === q.answer;
+            const studentAnsText = selectedOptIndex !== undefined ? q.options[selectedOptIndex] : "Boş Bıraktı";
+            const correctAnsText = q.options[q.answer];
+
+            const url = new URL(GOOGLE_WEBAPP_URL);
+            url.searchParams.append("studentName", studentName);
+            url.searchParams.append("questionId", q.id);
+            url.searchParams.append("unit", q.unit);
+            url.searchParams.append("kazanim", q.kazanim);
+            url.searchParams.append("studentAnswer", studentAnsText);
+            url.searchParams.append("correctAnswer", correctAnsText);
+            url.searchParams.append("result", isCorrect ? "DOĞRU" : "YANLIŞ");
+
+            // Arka planda sessizce gönderim
+            fetch(url.toString(), { method: 'GET', mode: 'no-cors' })
+                .catch(err => console.error("E-Tabloya gönderim hatası:", err));
+        }
+
+        function nextQuestion() {
+            if (answers[currentQuestionIndex] !== undefined) {
+                sendToGoogleSheets(currentQuestionIndex, answers[currentQuestionIndex]);
+            }
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        function finishQuiz() {
+            const answeredCount = Object.keys(answers).length;
+            if (answeredCount < questions.length) {
+                document.getElementById('confirm-modal').classList.remove('hidden');
+                return;
+            }
+            forceFinishQuiz();
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function forceFinishQuiz() {
+            closeModal();
+            // Son sorunun cevabını gönder
+            if (answers[currentQuestionIndex] !== undefined) {
+                sendToGoogleSheets(currentQuestionIndex, answers[currentQuestionIndex]);
+            }
+            showResults();
+        }
+
+        function showResults() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+
+            let correct = 0;
+            let wrongListHTML = '';
+
+            questions.forEach((q, idx) => {
+                const isCorrect = answers[idx] === q.answer;
+                const isUnanswered = answers[idx] === undefined;
+                
+                if (isCorrect) {
+                    correct++;
+                } else {
+                    const studentAnsText = isUnanswered ? "Boş Bıraktı" : q.options[answers[idx]];
+                    wrongListHTML += `
+                        <div class="bg-rose-50 border border-rose-100 p-4 rounded-lg flex items-start gap-3">
+                            <svg class="text-rose-500 shrink-0 mt-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+                            <div>
+                                <span class="inline-block bg-rose-200 text-rose-800 text-xs px-2 py-1 rounded font-bold mb-2">
+                                    Soru ${q.id} | ${q.unit}
+                                </span>
+                                <p class="text-slate-800 font-medium mb-1">${q.question}</p>
+                                <p class="text-sm text-slate-600 mb-2">
+                                    <strong>Öğrencinin Cevabı:</strong> ${studentAnsText} <br/>
+                                    <strong class="text-emerald-600">Doğru Cevap: ${q.options[q.answer]}</strong>
+                                </p>
+                                <p class="text-sm font-semibold text-blue-700 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                                    Çalışılması Gereken Konu: ${q.kazanim}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (correct === questions.length) {
+                wrongListHTML = `
+                    <div class="text-emerald-600 font-medium text-center p-4 bg-emerald-50 rounded-lg">
+                        Tebrikler! Öğrenci tüm soruları doğru cevapladı. Eksik kazanımı bulunmuyor.
+                    </div>
+                `;
+            }
+
+            const score = Math.round((correct / questions.length) * 100);
+            
+            document.getElementById('correct-count').innerText = correct;
+            document.getElementById('wrong-count').innerText = questions.length - correct;
+            document.getElementById('score-percentage').innerText = `%${score}`;
+            document.getElementById('error-analysis').innerHTML = wrongListHTML;
+        }
+
+        function exportToCSV() {
+            const BOM = "\uFEFF"; // Excel Türkçe karakter sorunu için
+            const headers = ["Soru No", "Unite", "Test Edilen Kazanim / Dilbilgisi", "Ogrenci Cevabi", "Dogru Cevap", "Sonuc"];
+            
+            const rows = questions.map((q, index) => {
+                const studentAnsIndex = answers[index];
+                const studentAnsText = studentAnsIndex !== undefined ? q.options[studentAnsIndex].replace(/"/g, '""') : "BOS BIRAKILDI";
+                const correctAnsText = q.options[q.answer].replace(/"/g, '""');
+                const isCorrect = studentAnsIndex === q.answer ? "DOGRU" : "YANLIS";
+                
+                return [
+                    q.id,
+                    `"${q.unit}"`,
+                    `"${q.kazanim}"`,
+                    `"${studentAnsText}"`,
+                    `"${correctAnsText}"`,
+                    `"${isCorrect}"`
+                ].join(",");
+            });
+
+            const csvContent = BOM + headers.join(",") + "\n" + rows.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${studentName.replace(/\s+/g, '_')}_Seviye_Analizi.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            answers = {};
+            studentName = "";
+            document.getElementById('student-name').value = "";
+            
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
