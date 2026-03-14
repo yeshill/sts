@@ -71,7 +71,7 @@
                         Unit
                     </span>
                 </div>
-                
+                FFV
                 <h3 id="question-text" class="text-2xl md:text-3xl font-black text-slate-700 mb-8 whitespace-pre-wrap text-center leading-relaxed">
                     Soru Metni
                 </h3>
@@ -253,13 +253,28 @@
                 .catch(err => console.error("E-Tabloya gönderim hatası:", err));
         }
 
-        function nextQuestion() {
-            if (answers[currentQuestionIndex] !== undefined) {
-                sendToGoogleSheets(currentQuestionIndex, answers[currentQuestionIndex]);
-            }
-            if (currentQuestionIndex < questions.length - 1) {
-                currentQuestionIndex++;
-                renderQuestion();
+function sendToGoogleSheets(qIndex, selectedOptIndex) {
+            if (!GOOGLE_WEBAPP_URL) return;
+            
+            const q = questions[qIndex];
+            const isCorrect = selectedOptIndex === q.answer;
+            // Öğrencinin seçtiği şıkkın tam metnini alıyoruz (Örn: "B) She")
+            const studentAnsText = selectedOptIndex !== undefined ? q.options[selectedOptIndex] : "Boş Bıraktı";
+            const correctAnsText = q.options[q.answer];
+
+            const url = new URL(GOOGLE_WEBAPP_URL);
+            url.searchParams.append("studentName", studentName); 
+            url.searchParams.append("questionId", q.id);
+            url.searchParams.append("unit", q.unit);
+            // YENİ EKLENEN SATIR: Soru metnini gönderiyoruz
+            url.searchParams.append("questionText", q.question); 
+            url.searchParams.append("kazanim", q.kazanim);
+            url.searchParams.append("studentAnswer", studentAnsText);
+            url.searchParams.append("correctAnswer", correctAnsText);
+            url.searchParams.append("result", isCorrect ? "DOĞRU" : "YANLIŞ");
+
+            fetch(url.toString(), { method: 'GET', mode: 'no-cors' })
+                .catch(err => console.error("E-Tabloya gönderim hatası:", err));
             }
         }
 
