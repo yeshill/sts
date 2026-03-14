@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meryem'in İngilizce Dünyası</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background-color: #fdf4ff;
+            background-image: radial-gradient(#e0e7ff 2px, transparent 2px);
+            background-size: 30px 30px;
+            overflow-x: hidden;
+        }
+
+        /* Ortak Buton Efektleri */
+        .game-btn { box-shadow: 0 6px 0 rgba(0,0,0,0.15); transition: all 0.1s ease; }
+        .game-btn:active { box-shadow: 0 0 0 rgba(0,0,0,0.15); transform: translateY(6px); }
+        .quiz-opt { transition: all 0.2s; border-width: 4px; }
+        .quiz-opt:hover { transform: scale(1.02); }
+
+        /* 3D Kart CSS */
+        .scene { perspective: 1000px; width: 100%; height: 400px; max-width: 320px; margin: 0 auto; }
+        .card { width: 100%; height: 100%; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
+        .card.is-flipped { transform: rotateY(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; border: 6px solid #fff; }
+        .card-front { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); color: #831843; }
+        .card-back { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #312e81; transform: rotateY(180deg); }
+
+        /* Animasyonlar */
+        .slide-out-right { animation: slideOutRight 0.5s forwards; }
+        .slide-out-left { animation: slideOutLeft 0.5s forwards; }
+        .slide-in { animation: slideIn 0.5s forwards; }
+        @keyframes slideOutRight { to { transform: translateX(120%) rotate(15deg); opacity: 0; } }
+        @keyframes slideOutLeft { to { transform: translateX(-120%) rotate(-15deg); opacity: 0; } }
+        @keyframes slideIn { from { transform: translateY(50px) scale(0.8); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        
+        /* Motive Edici Baloncuk (Toast) */
+        .toast-enter { animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .toast-leave { animation: toastOut 0.4s ease-in forwards; }
+        @keyframes toastIn { from { transform: translateY(100%) translateX(-50%) scale(0.5); opacity: 0; } to { transform: translateY(0) translateX(-50%) scale(1); opacity: 1; } }
+        @keyframes toastOut { to { transform: translateY(100%) translateX(-50%) scale(0.8); opacity: 0; } }
+
+        /* İlerleme Çubuğu Animasyonu */
+        @keyframes progressPulse { 0% { background-color: #f472b6; } 50% { background-color: #a855f7; } 100% { background-color: #f472b6; } }
+        .progress-magic { animation: progressPulse 3s infinite; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- ÜST BİLGİ ÇUBUĞU -->
+    <header class="p-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b-4 border-purple-100">
+        <h1 class="text-xl md:text-2xl font-black text-purple-600 flex items-center gap-2 cursor-pointer" onclick="goHome()">
+            <span>🦄</span> Meryem
+        </h1>
+        <div class="flex gap-2 md:gap-4 font-bold text-xs md:text-sm">
+            <button onclick="showProgress()" class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full border-2 border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1 shadow-sm">
+                <span>🏆</span> Karne
+            </button>
+            <div class="text-rose-500 bg-rose-50 px-3 py-1 rounded-full border-2 border-rose-200 hidden sm:block">
+                Tekrar: <span id="global-study-count">0</span>
+            </div>
+            <div class="text-emerald-500 bg-emerald-50 px-3 py-1 rounded-full border-2 border-emerald-200 hidden sm:block">
+                Öğrenilen: <span id="global-known-count">0</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-5xl mx-auto p-4 relative flex flex-col justify-center">
+
+        <!-- 1. ANA EKRAN (ÜNİTE SEÇİMİ) -->
+        <div id="home-screen" class="w-full py-4">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black text-purple-600 mb-2">Hangi üniteye çalışalım?</h2>
+                <p class="text-slate-500 font-bold">Tekrar etmen gereken kelimeler seni bekliyor!</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="unit-grid">
+                <!-- Üniteler JS ile buraya yüklenecek -->
+            </div>
+        </div>
+
+        <!-- 2. İLERLEME TAKİBİ (KARNE) EKRANI -->
+        <div id="progress-screen" class="hidden w-full max-w-2xl mx-auto py-4">
+            <div class="bg-white rounded-[2rem] p-8 shadow-2xl border-4 border-amber-100 text-center">
+                <div class="text-7xl mb-4 animate-bounce">🏆</div>
+                <h2 class="text-3xl font-black text-amber-500 mb-2">Meryem'in Başarı Karnesi</h2>
+                <p class="text-slate-500 font-bold mb-8">Tüm 4. sınıf kelimelerinde ne kadar ilerledin görelim!</p>
+
+                <!-- Genel İlerleme -->
+                <div class="bg-slate-50 rounded-2xl p-6 mb-8 border-2 border-slate-100">
+                    <div class="flex justify-between items-end mb-2">
+                        <span class="font-black text-slate-700 text-lg">Genel Kelime Dağarcığı</span>
+                        <span class="font-black text-emerald-500 text-2xl" id="total-progress-percent">%0</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-4 overflow-hidden shadow-inner">
+                        <div id="total-progress-bar" class="progress-magic h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm font-bold text-slate-400 mt-2 text-right"><span id="total-learned-text">0</span> / 250 Kelime Öğrenildi</p>
+                </div>
+
+                <!-- Ünite Bazlı Detay -->
+                <h3 class="text-left font-black text-purple-600 mb-4 px-2">Ünite Ünite Başarın:</h3>
+                <div class="space-y-3" id="unit-progress-list">
+                    <!-- Detaylar JS ile gelecek -->
+                </div>
+
+                <button onclick="goHome()" class="w-full mt-8 bg-amber-400 hover:bg-amber-500 text-white py-4 rounded-full font-black text-xl game-btn">
+                    Çalışmaya Geri Dön 🚀
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. ÇALIŞMA EKRANI (KARTLAR) -->
+        <div id="study-screen" class="hidden w-full max-w-md mx-auto flex-col items-center">
+            
+            <div class="w-full mb-6 px-4 mt-4">
+                <div class="flex justify-between text-sm font-bold text-slate-400 mb-2">
+                    <span id="current-unit-title" lang="en" class="text-purple-500 uppercase tracking-widest text-xs font-black">Unit</span>
+                    <span id="progress-text" class="bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-xs">1 / 25</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-3">
+                    <div id="progress-bar" class="bg-gradient-to-r from-purple-400 to-pink-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="scene" id="card-scene">
+                <div class="card" id="flashcard" onclick="flipCard()">
+                    <!-- ÖN YÜZ (İNGİLİZCE) -->
+                    <div class="card-face card-front">
+                        <button onclick="playAudio(event)" class="absolute top-4 right-4 bg-white p-3 rounded-full shadow-md text-purple-500 hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                        </button>
+                        <div id="word-icon" class="text-7xl mb-6 drop-shadow-lg">✨</div>
+                        <h2 id="word-en" lang="en" class="text-3xl font-black text-center leading-tight">word</h2>
+                        <div class="absolute bottom-4 text-pink-400/80 font-bold text-sm flex items-center gap-1 animate-pulse">
+                            Çevirmek için tıkla
+                        </div>
+                    </div>
+                    <!-- ARKA YÜZ (TÜRKÇE) -->
+                    <div class="card-face card-back">
+                        <div class="absolute top-4 text-indigo-400 text-sm font-black uppercase tracking-widest">Anlamı</div>
+                        <h2 id="word-tr" class="text-2xl font-black text-center mb-4">anlam</h2>
+                        <div class="w-full h-1 bg-indigo-200/50 rounded-full mb-4"></div>
+                        <p class="text-indigo-500/80 font-bold text-xs mb-1 uppercase">Örnek Cümle:</p>
+                        <p id="word-ex" lang="en" class="text-lg font-bold text-center italic text-indigo-900 leading-snug">"example"</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4 mt-8 w-full px-4" id="action-buttons">
+                <button onclick="markAsStudy()" class="flex-1 bg-rose-400 text-white py-4 rounded-2xl font-black text-lg game-btn flex flex-col items-center">
+                    <span class="text-2xl mb-1">🧐</span> Tekrar Et
+                </button>
+                <button onclick="markAsKnown()" class="flex-1 bg-emerald-400 text-white py-4 rounded-2xl font-black text-lg game-btn flex flex-col items-center">
+                    <span class="text-2xl mb-1">🤩</span> Öğrendim
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. ÖLÇME EKRANI (QUIZ) -->
+        <div id="quiz-screen" class="hidden w-full max-w-md mx-auto">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border-4 border-orange-100 text-center relative overflow-hidden mt-8">
+                <div class="absolute -top-4 -right-4 text-6xl opacity-20">🎯</div>
+                <h3 class="text-xl font-black text-orange-500 mb-6 uppercase tracking-wider">Mini Sınav Zamanı!</h3>
+                <p class="text-slate-500 font-bold mb-4">İngilizce karşılığını bul:</p>
+                <h2 id="quiz-question" class="text-3xl font-black text-slate-800 mb-8">Kelime</h2>
+                
+                <div id="quiz-options" class="space-y-3">
+                    <!-- Şıklar buraya gelecek -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. SONUÇ EKRANI -->
+        <div id="result-screen" class="hidden w-full max-w-md mx-auto text-center bg-white rounded-3xl p-8 shadow-2xl border-4 border-emerald-100 mt-10">
+            <div class="text-7xl mb-4">🏆</div>
+            <h2 class="text-3xl font-black text-emerald-500 mb-2">Çalışma Tamamlandı!</h2>
+            <p id="result-msg" class="text-slate-500 font-bold mb-6">Harika bir iş çıkardın.</p>
+            
+            <div class="bg-slate-50 rounded-2xl p-4 mb-6 border-2 border-slate-100">
+                <div class="flex justify-between font-bold mb-2"><span class="text-slate-500">Quiz Başarısı:</span> <span id="quiz-score" class="text-blue-500">0/5</span></div>
+                <div class="flex justify-between font-bold"><span class="text-slate-500">Bu Oturumda Öğrenilen:</span> <span id="new-learned" class="text-emerald-500">0</span></div>
+            </div>
+
+            <button onclick="goHome()" class="w-full bg-purple-500 text-white py-4 rounded-full font-black text-xl game-btn">
+                Ana Sayfaya Dön 🏠
+            </button>
+        </div>
+
+    </main>
+
+    <!-- MOTİVASYON BALONCUĞU (TOAST) -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-full shadow-2xl border-2 border-purple-200 font-black text-purple-600 flex items-center gap-2 opacity-0 pointer-events-none z-50 transition-all">
+        <span id="toast-icon">✨</span>
+        <span id="toast-text">Mesaj</span>
+    </div>
+
+    <script>
+        // --- 1. AYARLAR ---
+        const GOOGLE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzGmeDm1XSfmzaFxFQEt4o7qAScfBwPbsxtk1skcIyu2XKLaI-2QIILMO67eeYZJ_45/exec";
+        const STUDENT_NAME = "Meryem";
+
+        // --- 2. 10 ÜNİTE - DEV VERİTABANI (10x25 = 250 KELİME) ---
+        const wordDatabase = [
+            // UNIT 1: CLASSROOM RULES (25 Kelime)
+            { id: 101, unit: 1, unitName: "Classroom Rules", en: "open the window", tr: "pencereyi açmak", ex: "Open the window, please.", icon: "🪟" },
+            { id: 102, unit: 1, unitName: "Classroom Rules", en: "close the door", tr: "kapıyı kapatmak", ex: "Close the door.", icon: "🚪" },
+            { id: 103, unit: 1, unitName: "Classroom Rules", en: "turn on the lights", tr: "ışıkları açmak", ex: "Turn on the lights.", icon: "💡" },
+            { id: 104, unit: 1, unitName: "Classroom Rules", en: "turn off the lights", tr: "ışıkları kapatmak", ex: "Turn off the lights.", icon: "🌑" },
+            { id: 105, unit: 1, unitName: "Classroom Rules", en: "stand up", tr: "ayağa kalkmak", ex: "Stand up when the teacher comes.", icon: "🧍" },
+            { id: 106, unit: 1, unitName: "Classroom Rules", en: "sit down", tr: "oturmak", ex: "Sit down on your chair.", icon: "🪑" },
+            { id: 107, unit: 1, unitName: "Classroom Rules", en: "clean the board", tr: "tahtayı temizlemek", ex: "Clean the board please.", icon: "🧽" },
+            { id: 108, unit: 1, unitName: "Classroom Rules", en: "be quiet", tr: "sessiz olmak", ex: "Be quiet in the library.", icon: "🤫" },
+            { id: 109, unit: 1, unitName: "Classroom Rules", en: "listen to me", tr: "beni dinlemek", ex: "Listen to me carefully.", icon: "👂" },
+            { id: 110, unit: 1, unitName: "Classroom Rules", en: "look at the board", tr: "tahtaya bakmak", ex: "Look at the board.", icon: "👀" },
+            { id: 111, unit: 1, unitName: "Classroom Rules", en: "say that again", tr: "tekrar söylemek", ex: "Can you say that again?", icon: "🔁" },
+            { id: 112, unit: 1, unitName: "Classroom Rules", en: "raise your hand", tr: "el kaldırmak", ex: "Raise your hand to speak.", icon: "🙋" },
+            { id: 113, unit: 1, unitName: "Classroom Rules", en: "come here", tr: "buraya gelmek", ex: "Come here, Meryem.", icon: "🚶" },
+            { id: 114, unit: 1, unitName: "Classroom Rules", en: "give me", tr: "bana vermek", ex: "Give me the pencil.", icon: "🤲" },
+            { id: 115, unit: 1, unitName: "Classroom Rules", en: "take the book", tr: "kitabı almak", ex: "Take the book.", icon: "📖" },
+            { id: 116, unit: 1, unitName: "Classroom Rules", en: "eraser", tr: "silgi", ex: "This is my eraser.", icon: "🧼" },
+            { id: 117, unit: 1, unitName: "Classroom Rules", en: "pencil case", tr: "kalem kutusu", ex: "I have a red pencil case.", icon: "🖍️" },
+            { id: 118, unit: 1, unitName: "Classroom Rules", en: "pencil sharpener", tr: "kalemtıraş", ex: "Give me the pencil sharpener.", icon: "✏️" },
+            { id: 119, unit: 1, unitName: "Classroom Rules", en: "ruler", tr: "cetvel", ex: "I need a ruler.", icon: "📏" },
+            { id: 120, unit: 1, unitName: "Classroom Rules", en: "join", tr: "katılmak", ex: "Join our game.", icon: "🤝" },
+            { id: 121, unit: 1, unitName: "Classroom Rules", en: "leave", tr: "ayrılmak", ex: "Don't leave the classroom.", icon: "👋" },
+            { id: 122, unit: 1, unitName: "Classroom Rules", en: "stay", tr: "kalmak", ex: "Stay at your desk.", icon: "🛑" },
+            { id: 123, unit: 1, unitName: "Classroom Rules", en: "book", tr: "kitap", ex: "Open your book.", icon: "📚" },
+            { id: 124, unit: 1, unitName: "Classroom Rules", en: "notebook", tr: "defter", ex: "Write in your notebook.", icon: "📒" },
+            { id: 125, unit: 1, unitName: "Classroom Rules", en: "pen", tr: "tükenmez kalem", ex: "I have a blue pen.", icon: "🖊️" },
+
+            // UNIT 2: NATIONALITY (25 Kelime)
+            { id: 201, unit: 2, unitName: "Nationality", en: "Turkey", tr: "Türkiye", ex: "I am from Turkey.", icon: "🇹🇷" },
+            { id: 202, unit: 2, unitName: "Nationality", en: "Turkish", tr: "Türk", ex: "I am Turkish.", icon: "🧑‍🏫" },
+            { id: 203, unit: 2, unitName: "Nationality", en: "Germany", tr: "Almanya", ex: "He is from Germany.", icon: "🇩🇪" },
+            { id: 204, unit: 2, unitName: "Nationality", en: "German", tr: "Alman", ex: "He is German.", icon: "🥨" },
+            { id: 205, unit: 2, unitName: "Nationality", en: "Britain", tr: "Britanya", ex: "She is from Britain.", icon: "🇬🇧" },
+            { id: 206, unit: 2, unitName: "Nationality", en: "British", tr: "İngiliz", ex: "She is British.", icon: "☕" },
+            { id: 207, unit: 2, unitName: "Nationality", en: "Japan", tr: "Japonya", ex: "They are from Japan.", icon: "🇯🇵" },
+            { id: 208, unit: 2, unitName: "Nationality", en: "Japanese", tr: "Japon", ex: "They are Japanese.", icon: "🍣" },
+            { id: 209, unit: 2, unitName: "Nationality", en: "USA", tr: "ABD", ex: "I am from the USA.", icon: "🇺🇸" },
+            { id: 210, unit: 2, unitName: "Nationality", en: "American", tr: "Amerikalı", ex: "I am American.", icon: "🍔" },
+            { id: 211, unit: 2, unitName: "Nationality", en: "compass", tr: "pusula", ex: "Look at the compass.", icon: "🧭" },
+            { id: 212, unit: 2, unitName: "Nationality", en: "East", tr: "Doğu", ex: "The sun rises in the East.", icon: "➡️" },
+            { id: 213, unit: 2, unitName: "Nationality", en: "West", tr: "Batı", ex: "İzmir is in the West.", icon: "⬅️" },
+            { id: 214, unit: 2, unitName: "Nationality", en: "North", tr: "Kuzey", ex: "Sinop is in the North.", icon: "⬆️" },
+            { id: 215, unit: 2, unitName: "Nationality", en: "South", tr: "Güney", ex: "Antalya is in the South.", icon: "⬇️" },
+            { id: 216, unit: 2, unitName: "Nationality", en: "Iran", tr: "İran", ex: "He is from Iran.", icon: "🇮🇷" },
+            { id: 217, unit: 2, unitName: "Nationality", en: "Iranian", tr: "İranlı", ex: "He is Iranian.", icon: "🥙" },
+            { id: 218, unit: 2, unitName: "Nationality", en: "Iraq", tr: "Irak", ex: "She is from Iraq.", icon: "🇮🇶" },
+            { id: 219, unit: 2, unitName: "Nationality", en: "Iraqi", tr: "Iraklı", ex: "She is Iraqi.", icon: "🕌" },
+            { id: 220, unit: 2, unitName: "Nationality", en: "Pakistan", tr: "Pakistan", ex: "They are from Pakistan.", icon: "🇵🇰" },
+            { id: 221, unit: 2, unitName: "Nationality", en: "Pakistani", tr: "Pakistanlı", ex: "They are Pakistani.", icon: "🍛" },
+            { id: 222, unit: 2, unitName: "Nationality", en: "Russia", tr: "Rusya", ex: "I am from Russia.", icon: "🇷🇺" },
+            { id: 223, unit: 2, unitName: "Nationality", en: "Russian", tr: "Rus", ex: "I am Russian.", icon: "🪆" },
+            { id: 224, unit: 2, unitName: "Nationality", en: "nation", tr: "millet", ex: "We are a great nation.", icon: "🌍" },
+            { id: 225, unit: 2, unitName: "Nationality", en: "country", tr: "ülke", ex: "Turkey is my country.", icon: "🗺️" },
+
+            // UNIT 3: CARTOON CHARACTERS (25 Kelime)
+            { id: 301, unit: 3, unitName: "Cartoon Characters", en: "fly", tr: "uçmak", ex: "A bird can fly.", icon: "🦅" },
+            { id: 302, unit: 3, unitName: "Cartoon Characters", en: "swim", tr: "yüzmek", ex: "A fish can swim.", icon: "🐟" },
+            { id: 303, unit: 3, unitName: "Cartoon Characters", en: "run fast", tr: "hızlı koşmak", ex: "A cheetah can run fast.", icon: "🐆" },
+            { id: 304, unit: 3, unitName: "Cartoon Characters", en: "climb a tree", tr: "ağaca tırmanmak", ex: "A monkey can climb a tree.", icon: "🐒" },
+            { id: 305, unit: 3, unitName: "Cartoon Characters", en: "jump", tr: "zıplamak", ex: "A kangaroo can jump.", icon: "🦘" },
+            { id: 306, unit: 3, unitName: "Cartoon Characters", en: "lift weight", tr: "ağırlık kaldırmak", ex: "He can lift weight.", icon: "🏋️" },
+            { id: 307, unit: 3, unitName: "Cartoon Characters", en: "ride a horse", tr: "ata binmek", ex: "She can ride a horse.", icon: "🐎" },
+            { id: 308, unit: 3, unitName: "Cartoon Characters", en: "catch a ball", tr: "top yakalamak", ex: "The dog can catch a ball.", icon: "⚾" },
+            { id: 309, unit: 3, unitName: "Cartoon Characters", en: "play the guitar", tr: "gitar çalmak", ex: "I can play the guitar.", icon: "🎸" },
+            { id: 310, unit: 3, unitName: "Cartoon Characters", en: "drive a car", tr: "araba sürmek", ex: "My dad can drive a car.", icon: "🚗" },
+            { id: 311, unit: 3, unitName: "Cartoon Characters", en: "dive", tr: "dalmak", ex: "Penguins can dive.", icon: "🤿" },
+            { id: 312, unit: 3, unitName: "Cartoon Characters", en: "take pictures", tr: "fotoğraf çekmek", ex: "I can take pictures.", icon: "📸" },
+            { id: 313, unit: 3, unitName: "Cartoon Characters", en: "solve puzzles", tr: "bulmaca çözmek", ex: "He can solve puzzles.", icon: "🧩" },
+            { id: 314, unit: 3, unitName: "Cartoon Characters", en: "sing a song", tr: "şarkı söylemek", ex: "She can sing a song.", icon: "🎤" },
+            { id: 315, unit: 3, unitName: "Cartoon Characters", en: "dance", tr: "dans etmek", ex: "They can dance well.", icon: "💃" },
+            { id: 316, unit: 3, unitName: "Cartoon Characters", en: "do puzzles", tr: "yapboz yapmak", ex: "We can do puzzles.", icon: "🧩" },
+            { id: 317, unit: 3, unitName: "Cartoon Characters", en: "catch", tr: "yakalamak", ex: "Catch the ball!", icon: "🧤" },
+            { id: 318, unit: 3, unitName: "Cartoon Characters", en: "speak", tr: "konuşmak", ex: "I can speak English.", icon: "🗣️" },
+            { id: 319, unit: 3, unitName: "Cartoon Characters", en: "read books", tr: "kitap okumak", ex: "I can read books in English.", icon: "📚" },
+            { id: 320, unit: 3, unitName: "Cartoon Characters", en: "play the piano", tr: "piyano çalmak", ex: "She can play the piano.", icon: "🎹" },
+            { id: 321, unit: 3, unitName: "Cartoon Characters", en: "cartoon", tr: "çizgi film", ex: "I love this cartoon.", icon: "📺" },
+            { id: 322, unit: 3, unitName: "Cartoon Characters", en: "hero", tr: "kahraman", ex: "My hero is Superman.", icon: "🦸" },
+            { id: 323, unit: 3, unitName: "Cartoon Characters", en: "strong", tr: "güçlü", ex: "He is very strong.", icon: "💪" },
+            { id: 324, unit: 3, unitName: "Cartoon Characters", en: "fast", tr: "hızlı", ex: "Sonic is fast.", icon: "⚡" },
+            { id: 325, unit: 3, unitName: "Cartoon Characters", en: "character", tr: "karakter", ex: "Who is your favorite character?", icon: "🎭" },
+
+            // UNIT 4: FREE TIME (25 Kelime)
+            { id: 401, unit: 4, unitName: "Free Time", en: "ride a bike", tr: "bisiklet sürmek", ex: "I like riding a bike.", icon: "🚲" },
+            { id: 402, unit: 4, unitName: "Free Time", en: "read comics", tr: "çizgi roman okumak", ex: "He likes reading comics.", icon: "🦸" },
+            { id: 403, unit: 4, unitName: "Free Time", en: "watch cartoons", tr: "çizgi film izlemek", ex: "She likes watching cartoons.", icon: "📺" },
+            { id: 404, unit: 4, unitName: "Free Time", en: "play chess", tr: "satranç oynamak", ex: "We like playing chess.", icon: "♟️" },
+            { id: 405, unit: 4, unitName: "Free Time", en: "play table tennis", tr: "masa tenisi oynamak", ex: "They like playing table tennis.", icon: "🏓" },
+            { id: 406, unit: 4, unitName: "Free Time", en: "plant trees", tr: "ağaç dikmek", ex: "I like planting trees.", icon: "🌲" },
+            { id: 407, unit: 4, unitName: "Free Time", en: "draw pictures", tr: "resim çizmek", ex: "She likes drawing pictures.", icon: "🎨" },
+            { id: 408, unit: 4, unitName: "Free Time", en: "listen to music", tr: "müzik dinlemek", ex: "I like listening to music.", icon: "🎧" },
+            { id: 409, unit: 4, unitName: "Free Time", en: "learn English", tr: "İngilizce öğrenmek", ex: "We like learning English.", icon: "🇬🇧" },
+            { id: 410, unit: 4, unitName: "Free Time", en: "play the piano", tr: "piyano çalmak", ex: "He likes playing the piano.", icon: "🎹" },
+            { id: 411, unit: 4, unitName: "Free Time", en: "collect coins", tr: "bozuk para biriktirmek", ex: "I like collecting coins.", icon: "🪙" },
+            { id: 412, unit: 4, unitName: "Free Time", en: "do puzzles", tr: "yapboz yapmak", ex: "She likes doing puzzles.", icon: "🧩" },
+            { id: 413, unit: 4, unitName: "Free Time", en: "fly a kite", tr: "uçurtma uçurmak", ex: "He likes flying a kite.", icon: "🪁" },
+            { id: 414, unit: 4, unitName: "Free Time", en: "color books", tr: "kitap boyamak", ex: "I like coloring books.", icon: "🖍️" },
+            { id: 415, unit: 4, unitName: "Free Time", en: "skip rope", tr: "ip atlamak", ex: "She likes skipping rope.", icon: "〰️" },
+            { id: 416, unit: 4, unitName: "Free Time", en: "play with marbles", tr: "misketle oynamak", ex: "They like playing with marbles.", icon: "🔮" },
+            { id: 417, unit: 4, unitName: "Free Time", en: "play football", tr: "futbol oynamak", ex: "I like playing football.", icon: "⚽" },
+            { id: 418, unit: 4, unitName: "Free Time", en: "read a book", tr: "kitap okumak", ex: "I like reading a book.", icon: "📖" },
+            { id: 419, unit: 4, unitName: "Free Time", en: "swim", tr: "yüzmek", ex: "I like swimming.", icon: "🏊" },
+            { id: 420, unit: 4, unitName: "Free Time", en: "draw", tr: "çizmek", ex: "I like drawing.", icon: "✏️" },
+            { id: 421, unit: 4, unitName: "Free Time", en: "paint", tr: "boyamak", ex: "I like painting.", icon: "🖌️" },
+            { id: 422, unit: 4, unitName: "Free Time", en: "run", tr: "koşmak", ex: "I like running.", icon: "🏃" },
+            { id: 423, unit: 4, unitName: "Free Time", en: "walk", tr: "yürümek", ex: "I like walking.", icon: "🚶" },
+            { id: 424, unit: 4, unitName: "Free Time", en: "sing", tr: "şarkı söylemek", ex: "I like singing.", icon: "🎶" },
+            { id: 425, unit: 4, unitName: "Free Time", en: "dance", tr: "dans etmek", ex: "I dislike dancing.", icon: "🕺" },
+
+            // UNIT 5: MY DAY (25 Kelime)
+            { id: 501, unit: 5, unitName: "My Day", en: "wake up", tr: "uyanmak", ex: "I wake up in the morning.", icon: "🥱" },
+            { id: 502, unit: 5, unitName: "My Day", en: "wash hands", tr: "elleri yıkamak", ex: "I wash my hands.", icon: "🧼" },
+            { id: 503, unit: 5, unitName: "My Day", en: "wash face", tr: "yüzü yıkamak", ex: "I wash my face.", icon: "🚰" },
+            { id: 504, unit: 5, unitName: "My Day", en: "brush teeth", tr: "dişleri fırçalamak", ex: "I brush my teeth.", icon: "🪥" },
+            { id: 505, unit: 5, unitName: "My Day", en: "get dressed", tr: "giyinmek", ex: "I get dressed.", icon: "👕" },
+            { id: 506, unit: 5, unitName: "My Day", en: "have breakfast", tr: "kahvaltı yapmak", ex: "I have breakfast.", icon: "🥞" },
+            { id: 507, unit: 5, unitName: "My Day", en: "go to school", tr: "okula gitmek", ex: "I go to school.", icon: "🏫" },
+            { id: 508, unit: 5, unitName: "My Day", en: "listen to the teacher", tr: "öğretmeni dinlemek", ex: "I listen to my teacher.", icon: "👩‍🏫" },
+            { id: 509, unit: 5, unitName: "My Day", en: "have lunch", tr: "öğle yemeği yemek", ex: "I have lunch at school.", icon: "🍱" },
+            { id: 510, unit: 5, unitName: "My Day", en: "do homework", tr: "ödev yapmak", ex: "I do my homework.", icon: "✍️" },
+            { id: 511, unit: 5, unitName: "My Day", en: "play with friends", tr: "arkadaşlarla oynamak", ex: "I play with my friends.", icon: "⚽" },
+            { id: 512, unit: 5, unitName: "My Day", en: "read a book", tr: "kitap okumak", ex: "I read a book.", icon: "📚" },
+            { id: 513, unit: 5, unitName: "My Day", en: "have dinner", tr: "akşam yemeği yemek", ex: "I have dinner.", icon: "🍽️" },
+            { id: 514, unit: 5, unitName: "My Day", en: "watch TV", tr: "televizyon izlemek", ex: "I watch TV.", icon: "📺" },
+            { id: 515, unit: 5, unitName: "My Day", en: "go to bed", tr: "yatmaya gitmek", ex: "I go to bed at night.", icon: "🛌" },
+            { id: 516, unit: 5, unitName: "My Day", en: "meet friends", tr: "arkadaşlarla buluşmak", ex: "I meet my friends at school.", icon: "🫂" },
+            { id: 517, unit: 5, unitName: "My Day", en: "go shopping", tr: "alışverişe gitmek", ex: "I go shopping with my mom.", icon: "🛒" },
+            { id: 518, unit: 5, unitName: "My Day", en: "go to the playground", tr: "oyun parkına gitmek", ex: "I go to the playground.", icon: "🛝" },
+            { id: 519, unit: 5, unitName: "My Day", en: "have a shower", tr: "duş almak", ex: "I have a shower.", icon: "🚿" },
+            { id: 520, unit: 5, unitName: "My Day", en: "wash", tr: "yıkamak", ex: "Wash the dishes.", icon: "🧽" },
+            { id: 521, unit: 5, unitName: "My Day", en: "in the morning", tr: "sabah", ex: "I wake up in the morning.", icon: "🌅" },
+            { id: 522, unit: 5, unitName: "My Day", en: "at noon", tr: "öğlen", ex: "I have lunch at noon.", icon: "🕛" },
+            { id: 523, unit: 5, unitName: "My Day", en: "in the afternoon", tr: "öğleden sonra", ex: "I watch TV in the afternoon.", icon: "🌤️" },
+            { id: 524, unit: 5, unitName: "My Day", en: "in the evening", tr: "akşam", ex: "I read a book in the evening.", icon: "🌆" },
+            { id: 525, unit: 5, unitName: "My Day", en: "at night", tr: "gece", ex: "I go to bed at night.", icon: "🌙" },
+
+            // UNIT 6: FUN WITH SCIENCE (25 Kelime)
+            { id: 601, unit: 6, unitName: "Fun with Science", en: "experiment", tr: "deney", ex: "Let's do an experiment.", icon: "🧪" },
+            { id: 602, unit: 6, unitName: "Fun with Science", en: "scientist", tr: "bilim insanı", ex: "He is a scientist.", icon: "🧑‍🔬" },
+            { id: 603, unit: 6, unitName: "Fun with Science", en: "laboratory", tr: "laboratuvar", ex: "We are in the laboratory.", icon: "🔬" },
+            { id: 604, unit: 6, unitName: "Fun with Science", en: "tube", tr: "deney tüpü", ex: "Look at the tube.", icon: "🧪" },
+            { id: 605, unit: 6, unitName: "Fun with Science", en: "magnifier", tr: "büyüteç", ex: "Use the magnifier.", icon: "🔍" },
+            { id: 606, unit: 6, unitName: "Fun with Science", en: "goggles", tr: "koruyucu gözlük", ex: "Wear your goggles.", icon: "🥽" },
+            { id: 607, unit: 6, unitName: "Fun with Science", en: "pour water", tr: "su dökmek", ex: "Pour water into the glass.", icon: "💧" },
+            { id: 608, unit: 6, unitName: "Fun with Science", en: "mix", tr: "karıştırmak", ex: "Mix black and white.", icon: "🥣" },
+            { id: 609, unit: 6, unitName: "Fun with Science", en: "fold", tr: "katlamak", ex: "Fold the paper.", icon: "📄" },
+            { id: 610, unit: 6, unitName: "Fun with Science", en: "cut", tr: "kesmek", ex: "Cut the paper.", icon: "✂️" },
+            { id: 611, unit: 6, unitName: "Fun with Science", en: "freeze", tr: "dondurmak", ex: "Freeze the water.", icon: "🧊" },
+            { id: 612, unit: 6, unitName: "Fun with Science", en: "melt", tr: "eritmek", ex: "Melt the ice.", icon: "🫠" },
+            { id: 613, unit: 6, unitName: "Fun with Science", en: "plant", tr: "bitki dikmek", ex: "Plant it.", icon: "🌱" },
+            { id: 614, unit: 6, unitName: "Fun with Science", en: "water", tr: "sulamak", ex: "Water it.", icon: "🚿" },
+            { id: 615, unit: 6, unitName: "Fun with Science", en: "science", tr: "bilim", ex: "What is 'science' in Turkish?", icon: "🧬" },
+            { id: 616, unit: 6, unitName: "Fun with Science", en: "box", tr: "kutu", ex: "Behind the box.", icon: "📦" },
+            { id: 617, unit: 6, unitName: "Fun with Science", en: "brush", tr: "fırça", ex: "Where is the brush?", icon: "🖌️" },
+            { id: 618, unit: 6, unitName: "Fun with Science", en: "cover", tr: "kapak/örtmek", ex: "What is 'cover'?", icon: "🥡" },
+            { id: 619, unit: 6, unitName: "Fun with Science", en: "cup", tr: "fincan/kupa", ex: "What is in the cup?", icon: "☕" },
+            { id: 620, unit: 6, unitName: "Fun with Science", en: "shake", tr: "çalkalamak", ex: "Shake the bottle.", icon: "🫨" },
+            { id: 621, unit: 6, unitName: "Fun with Science", en: "white", tr: "beyaz", ex: "White and black.", icon: "⚪" },
+            { id: 622, unit: 6, unitName: "Fun with Science", en: "black", tr: "siyah", ex: "Mix black and white.", icon: "⚫" },
+            { id: 623, unit: 6, unitName: "Fun with Science", en: "gray", tr: "gri", ex: "You get gray.", icon: "🔘" },
+            { id: 624, unit: 6, unitName: "Fun with Science", en: "bottle", tr: "şişe", ex: "It's in front of the bottle.", icon: "🍾" },
+            { id: 625, unit: 6, unitName: "Fun with Science", en: "glass", tr: "bardak", ex: "Near that glass.", icon: "🥛" },
+
+            // UNIT 7: JOBS (25 Kelime)
+            { id: 701, unit: 7, unitName: "Jobs", en: "doctor", tr: "doktor", ex: "I'm a doctor. I work at a hospital.", icon: "🩺" },
+            { id: 702, unit: 7, unitName: "Jobs", en: "hospital", tr: "hastane", ex: "The doctor works at a hospital.", icon: "🏥" },
+            { id: 703, unit: 7, unitName: "Jobs", en: "teacher", tr: "öğretmen", ex: "She is a teacher.", icon: "👩‍🏫" },
+            { id: 704, unit: 7, unitName: "Jobs", en: "school", tr: "okul", ex: "The teacher works at a school.", icon: "🏫" },
+            { id: 705, unit: 7, unitName: "Jobs", en: "vet", tr: "veteriner", ex: "The vet helps animals.", icon: "🐶" },
+            { id: 706, unit: 7, unitName: "Jobs", en: "animal clinic", tr: "hayvan kliniği", ex: "The vet works at a clinic.", icon: "🐾" },
+            { id: 707, unit: 7, unitName: "Jobs", en: "pilot", tr: "pilot", ex: "The pilot flies planes.", icon: "✈️" },
+            { id: 708, unit: 7, unitName: "Jobs", en: "chef", tr: "aşçı", ex: "The chef cooks food.", icon: "👨‍🍳" },
+            { id: 709, unit: 7, unitName: "Jobs", en: "restaurant", tr: "restoran", ex: "The chef works at a restaurant.", icon: "🍽️" },
+            { id: 710, unit: 7, unitName: "Jobs", en: "farmer", tr: "çiftçi", ex: "I'm a farmer.", icon: "👨‍🌾" },
+            { id: 711, unit: 7, unitName: "Jobs", en: "farm", tr: "çiftlik", ex: "I work on a farm.", icon: "🚜" },
+            { id: 712, unit: 7, unitName: "Jobs", en: "policeman", tr: "polis memuru (erkek)", ex: "He is a policeman.", icon: "👮‍♂️" },
+            { id: 713, unit: 7, unitName: "Jobs", en: "police station", tr: "karakol", ex: "At the police station.", icon: "🚓" },
+            { id: 714, unit: 7, unitName: "Jobs", en: "fireman", tr: "itfaiyeci", ex: "He is a fireman.", icon: "🚒" },
+            { id: 715, unit: 7, unitName: "Jobs", en: "singer", tr: "şarkıcı", ex: "The singer sings songs.", icon: "🎤" },
+            { id: 716, unit: 7, unitName: "Jobs", en: "actor", tr: "aktör", ex: "He is a famous actor.", icon: "🎭" },
+            { id: 717, unit: 7, unitName: "Jobs", en: "actress", tr: "aktris", ex: "She is a good actress.", icon: "💃" },
+            { id: 718, unit: 7, unitName: "Jobs", en: "businessman", tr: "iş adamı", ex: "He is a businessman.", icon: "💼" },
+            { id: 719, unit: 7, unitName: "Jobs", en: "dancer", tr: "dansçı", ex: "She is a dancer.", icon: "🩰" },
+            { id: 720, unit: 7, unitName: "Jobs", en: "nurse", tr: "hemşire", ex: "The nurse works at the hospital.", icon: "💉" },
+            { id: 721, unit: 7, unitName: "Jobs", en: "policewoman", tr: "polis memuru (kadın)", ex: "She is a policewoman.", icon: "👮‍♀️" },
+            { id: 722, unit: 7, unitName: "Jobs", en: "waiter", tr: "garson", ex: "The waiter serves food.", icon: "🍽️" },
+            { id: 723, unit: 7, unitName: "Jobs", en: "writer", tr: "yazar", ex: "The writer writes books.", icon: "✍️" },
+            { id: 724, unit: 7, unitName: "Jobs", en: "job", tr: "meslek", ex: "What is your job?", icon: "👔" },
+            { id: 725, unit: 7, unitName: "Jobs", en: "work", tr: "çalışmak", ex: "Where does he work?", icon: "🏢" },
+
+            // UNIT 8: MY CLOTHES (25 Kelime)
+            { id: 801, unit: 8, unitName: "My Clothes", en: "autumn", tr: "sonbahar", ex: "It is autumn.", icon: "🍂" },
+            { id: 802, unit: 8, unitName: "My Clothes", en: "spring", tr: "ilkbahar", ex: "It is spring.", icon: "🌸" },
+            { id: 803, unit: 8, unitName: "My Clothes", en: "summer", tr: "yaz", ex: "It is summer.", icon: "☀️" },
+            { id: 804, unit: 8, unitName: "My Clothes", en: "winter", tr: "kış", ex: "It is winter.", icon: "❄️" },
+            { id: 805, unit: 8, unitName: "My Clothes", en: "boot", tr: "bot", ex: "Put on your boots.", icon: "👢" },
+            { id: 806, unit: 8, unitName: "My Clothes", en: "dress", tr: "elbise", ex: "It's a beautiful dress.", icon: "👗" },
+            { id: 807, unit: 8, unitName: "My Clothes", en: "glove", tr: "eldiven", ex: "Wear your gloves.", icon: "🧤" },
+            { id: 808, unit: 8, unitName: "My Clothes", en: "hat", tr: "şapka", ex: "I need a hat.", icon: "🧢" },
+            { id: 809, unit: 8, unitName: "My Clothes", en: "jeans", tr: "kot pantolon", ex: "I wear jeans.", icon: "👖" },
+            { id: 810, unit: 8, unitName: "My Clothes", en: "shoe", tr: "ayakkabı", ex: "My new shoes.", icon: "👞" },
+            { id: 811, unit: 8, unitName: "My Clothes", en: "skirt", tr: "etek", ex: "A red skirt.", icon: "👗" },
+            { id: 812, unit: 8, unitName: "My Clothes", en: "sock", tr: "çorap", ex: "Warm socks.", icon: "🧦" },
+            { id: 813, unit: 8, unitName: "My Clothes", en: "sunglasses", tr: "güneş gözlüğü", ex: "Put on sunglasses.", icon: "🕶️" },
+            { id: 814, unit: 8, unitName: "My Clothes", en: "trousers", tr: "pantolon", ex: "Blue trousers.", icon: "👖" },
+            { id: 815, unit: 8, unitName: "My Clothes", en: "coat", tr: "kaban/palto", ex: "Put on your coat.", icon: "🧥" },
+            { id: 816, unit: 8, unitName: "My Clothes", en: "umbrella", tr: "şemsiye", ex: "I need my umbrella.", icon: "☂️" },
+            { id: 817, unit: 8, unitName: "My Clothes", en: "borrow", tr: "ödünç almak", ex: "Can I borrow your umbrella?", icon: "🤝" },
+            { id: 818, unit: 8, unitName: "My Clothes", en: "put on", tr: "giymek", ex: "Put on your coat.", icon: "🧥" },
+            { id: 819, unit: 8, unitName: "My Clothes", en: "wear", tr: "giymek/takmak", ex: "Wear your gloves.", icon: "🧤" },
+            { id: 820, unit: 8, unitName: "My Clothes", en: "broken", tr: "bozuk/kırık", ex: "Sorry, it's broken.", icon: "💔" },
+            { id: 821, unit: 8, unitName: "My Clothes", en: "cold", tr: "soğuk", ex: "It's cold and snowy.", icon: "🥶" },
+            { id: 822, unit: 8, unitName: "My Clothes", en: "snowy", tr: "karlı", ex: "It's snowy in winter.", icon: "🌨️" },
+            { id: 823, unit: 8, unitName: "My Clothes", en: "rainy", tr: "yağmurlu", ex: "It's rainy today.", icon: "🌧️" },
+            { id: 824, unit: 8, unitName: "My Clothes", en: "windy", tr: "rüzgarlı", ex: "It's windy.", icon: "🌬️" },
+            { id: 825, unit: 8, unitName: "My Clothes", en: "sunny", tr: "güneşli", ex: "It's sunny in summer.", icon: "☀️" },
+
+            // UNIT 9: MY FRIENDS (25 Kelime)
+            { id: 901, unit: 9, unitName: "My Friends", en: "bald", tr: "kel", ex: "He is bald.", icon: "👨‍🦲" },
+            { id: 902, unit: 9, unitName: "My Friends", en: "beard", tr: "sakal", ex: "He has a beard.", icon: "🧔" },
+            { id: 903, unit: 9, unitName: "My Friends", en: "beautiful", tr: "güzel", ex: "She is beautiful.", icon: "👸" },
+            { id: 904, unit: 9, unitName: "My Friends", en: "blonde hair", tr: "sarı saç", ex: "She has blonde hair.", icon: "👱‍♀️" },
+            { id: 905, unit: 9, unitName: "My Friends", en: "curly hair", tr: "kıvırcık saç", ex: "He has curly hair.", icon: "🧑‍🦱" },
+            { id: 906, unit: 9, unitName: "My Friends", en: "dark hair", tr: "koyu renk saç", ex: "He has dark hair.", icon: "🧑" },
+            { id: 907, unit: 9, unitName: "My Friends", en: "straight hair", tr: "düz saç", ex: "She has straight hair.", icon: "👩" },
+            { id: 908, unit: 9, unitName: "My Friends", en: "wavy hair", tr: "dalgalı saç", ex: "She has wavy hair.", icon: "🌊" },
+            { id: 909, unit: 9, unitName: "My Friends", en: "short hair", tr: "kısa saç", ex: "My hair is short.", icon: "✂️" },
+            { id: 910, unit: 9, unitName: "My Friends", en: "long hair", tr: "uzun saç", ex: "She has long hair.", icon: "📏" },
+            { id: 911, unit: 9, unitName: "My Friends", en: "handsome", tr: "yakışıklı", ex: "He is handsome.", icon: "🤴" },
+            { id: 912, unit: 9, unitName: "My Friends", en: "headscarf", tr: "başörtüsü", ex: "She has a blue headscarf.", icon: "🧕" },
+            { id: 913, unit: 9, unitName: "My Friends", en: "moustache", tr: "bıyık", ex: "He has a moustache.", icon: "👨" },
+            { id: 914, unit: 9, unitName: "My Friends", en: "short", tr: "kısa boylu", ex: "She is short.", icon: "🧍‍♀️" },
+            { id: 915, unit: 9, unitName: "My Friends", en: "tall", tr: "uzun boylu", ex: "She is tall and slim.", icon: "🧍‍♂️" },
+            { id: 916, unit: 9, unitName: "My Friends", en: "slim", tr: "ince/narin", ex: "She is tall and slim.", icon: "💃" },
+            { id: 917, unit: 9, unitName: "My Friends", en: "thin", tr: "zayıf", ex: "He is young and thin.", icon: "🚶" },
+            { id: 918, unit: 9, unitName: "My Friends", en: "young", tr: "genç", ex: "He is young.", icon: "👦" },
+            { id: 919, unit: 9, unitName: "My Friends", en: "middle aged", tr: "orta yaşlı", ex: "He is middle aged.", icon: "👨" },
+            { id: 920, unit: 9, unitName: "My Friends", en: "old", tr: "yaşlı", ex: "My grandpa is old.", icon: "👴" },
+            { id: 921, unit: 9, unitName: "My Friends", en: "brown eyes", tr: "kahverengi göz", ex: "She has brown eyes.", icon: "👁️" },
+            { id: 922, unit: 9, unitName: "My Friends", en: "blue eyes", tr: "mavi göz", ex: "He has blue eyes.", icon: "👁️" },
+            { id: 923, unit: 9, unitName: "My Friends", en: "green eyes", tr: "yeşil göz", ex: "She has green eyes.", icon: "👁️" },
+            { id: 924, unit: 9, unitName: "My Friends", en: "legs", tr: "bacaklar", ex: "Her legs are very long.", icon: "🦵" },
+            { id: 925, unit: 9, unitName: "My Friends", en: "friend", tr: "arkadaş", ex: "This is my friend.", icon: "👫" },
+
+            // UNIT 10: FOOD AND DRINKS (25 Kelime)
+            { id: 1001, unit: 10, unitName: "Food and Drinks", en: "bread", tr: "ekmek", ex: "I want some bread.", icon: "🍞" },
+            { id: 1002, unit: 10, unitName: "Food and Drinks", en: "butter", tr: "tereyağı", ex: "Bread and butter.", icon: "🧈" },
+            { id: 1003, unit: 10, unitName: "Food and Drinks", en: "cheese", tr: "peynir", ex: "I like cheese.", icon: "🧀" },
+            { id: 1004, unit: 10, unitName: "Food and Drinks", en: "coffee", tr: "kahve", ex: "Do you want coffee?", icon: "☕" },
+            { id: 1005, unit: 10, unitName: "Food and Drinks", en: "cupcake", tr: "küçük kek", ex: "I love cupcakes.", icon: "🧁" },
+            { id: 1006, unit: 10, unitName: "Food and Drinks", en: "fish and chips", tr: "balık ve patates kızartması", ex: "I eat fish and chips.", icon: "🐟🍟" },
+            { id: 1007, unit: 10, unitName: "Food and Drinks", en: "honey", tr: "bal", ex: "Honey is sweet.", icon: "🍯" },
+            { id: 1008, unit: 10, unitName: "Food and Drinks", en: "lemonade", tr: "limonata", ex: "Cold lemonade.", icon: "🍋" },
+            { id: 1009, unit: 10, unitName: "Food and Drinks", en: "marmalade", tr: "marmelat", ex: "Bread and marmalade.", icon: "🍊" },
+            { id: 1010, unit: 10, unitName: "Food and Drinks", en: "milk", tr: "süt", ex: "I want some milk, please.", icon: "🥛" },
+            { id: 1011, unit: 10, unitName: "Food and Drinks", en: "olive", tr: "zeytin", ex: "I eat olives.", icon: "🫒" },
+            { id: 1012, unit: 10, unitName: "Food and Drinks", en: "pasta", tr: "makarna", ex: "I love pasta.", icon: "🍝" },
+            { id: 1013, unit: 10, unitName: "Food and Drinks", en: "salad", tr: "salata", ex: "A healthy salad.", icon: "🥗" },
+            { id: 1014, unit: 10, unitName: "Food and Drinks", en: "soup", tr: "çorba", ex: "Hot soup.", icon: "🥣" },
+            { id: 1015, unit: 10, unitName: "Food and Drinks", en: "tea", tr: "çay", ex: "Would you like some tea?", icon: "🍵" },
+            { id: 1016, unit: 10, unitName: "Food and Drinks", en: "yoghurt", tr: "yoğurt", ex: "I eat yoghurt.", icon: "🥣" },
+            { id: 1017, unit: 10, unitName: "Food and Drinks", en: "sandwich", tr: "sandviç", ex: "Do you want a sandwich?", icon: "🥪" },
+            { id: 1018, unit: 10, unitName: "Food and Drinks", en: "apple", tr: "elma", ex: "How about an apple?", icon: "🍎" },
+            { id: 1019, unit: 10, unitName: "Food and Drinks", en: "hungry", tr: "aç", ex: "Are you hungry?", icon: "🤤" },
+            { id: 1020, unit: 10, unitName: "Food and Drinks", en: "thirsty", tr: "susamış", ex: "Is she thirsty?", icon: "🥵" },
+            { id: 1021, unit: 10, unitName: "Food and Drinks", en: "full", tr: "tok", ex: "No thanks, I'm full.", icon: "🙅" },
+            { id: 1022, unit: 10, unitName: "Food and Drinks", en: "want", tr: "istemek", ex: "Want a sandwich?", icon: "🤲" },
+            { id: 1023, unit: 10, unitName: "Food and Drinks", en: "now", tr: "şimdi", ex: "Not now, thanks.", icon: "⏳" },
+            { id: 1024, unit: 10, unitName: "Food and Drinks", en: "later", tr: "daha sonra", ex: "Maybe later.", icon: "🕒" },
+            { id: 1025, unit: 10, unitName: "Food and Drinks", en: "offer", tr: "teklif etmek", ex: "Make offers.", icon: "🎁" }
+        ];
+
+        // --- 3. UYGULAMA HAFIZASI (STATE) ---
+        let userMemory = JSON.parse(localStorage.getItem('meryemMemory')) || {
+            knownWords: [],
+            studyWords: []
+        };
+
+        let currentMode = ''; 
+        let currentUnitInfo = null;
+        let queue = [];
+        let currentIndex = 0;
+        let isFlipped = false;
+        
+        // Quiz için state
+        let quizQuestions = [];
+        let currentQuizIndex = 0;
+        let quizScore = 0;
+        let newlyLearned = 0; // Bu oturumda kaç kelime öğrendi
+
+        // --- 4. BAŞLANGIÇ VE ANA EKRAN ---
+        window.onload = () => {
+            updateGlobalStats();
+            renderUnitSelection();
+            
+            if(userMemory.knownWords.length > 20) {
+                showToast(`Harikasın! Şimdiden ${userMemory.knownWords.length} kelime ezberledin! 🎉`);
+            } else {
+                showToast("Öğrenme macerasına hoş geldin Meryem! 🚀");
+            }
+        };
+
+        function updateGlobalStats() {
+            const knownCountEl = document.getElementById('global-known-count');
+            const studyCountEl = document.getElementById('global-study-count');
+            
+            if (knownCountEl) knownCountEl.innerText = userMemory.knownWords.length;
+            if (studyCountEl) studyCountEl.innerText = userMemory.studyWords.length;
+        }
+
+        function renderUnitSelection() {
+            const grid = document.getElementById('unit-grid');
+            grid.innerHTML = '';
+
+            const units = [...new Set(wordDatabase.map(w => w.unit))];
+
+            units.forEach(unitNum => {
+                const unitWords = wordDatabase.filter(w => w.unit === unitNum);
+                const unitName = unitWords[0].unitName;
+                
+                const unitWordIds = unitWords.map(w => w.id);
+                const knownInUnit = userMemory.knownWords.filter(id => unitWordIds.includes(id)).length;
+                const studyInUnit = userMemory.studyWords.filter(id => unitWordIds.includes(id)).length;
+                const totalInUnit = unitWords.length;
+
+                // Üniteyi bitirme durumu
+                const isCompleted = knownInUnit === totalInUnit;
+                const borderClass = isCompleted ? 'border-emerald-300 bg-emerald-50' : 'border-purple-100 bg-white';
+
+                const cardHTML = `
+                    <div class="${borderClass} p-6 rounded-3xl shadow-lg border-4 flex flex-col justify-between hover:shadow-xl transition-all relative overflow-hidden">
+                        ${isCompleted ? '<div class="absolute -right-4 -top-4 text-6xl opacity-20">🏆</div>' : ''}
+                        <div>
+                            <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Unit ${unitNum}</span>
+                            <h3 lang="en" class="text-xl font-black text-purple-600 mb-4 ${isCompleted ? 'text-emerald-700' : ''}">${unitName}</h3>
+                            <div class="flex gap-2 mb-6">
+                                <span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">${knownInUnit}/${totalInUnit} Öğrenildi</span>
+                                ${studyInUnit > 0 ? `<span class="text-xs font-bold text-rose-600 bg-rose-100 px-2 py-1 rounded-full">${studyInUnit} Tekrar</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex gap-2 z-10">
+                            <button onclick="startStudy(${unitNum}, 'all')" class="flex-1 ${isCompleted ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-purple-500 hover:bg-purple-600'} text-white py-3 rounded-2xl font-black text-sm game-btn">
+                                ${isCompleted ? 'Tekrar Gözat' : 'Tümünü Çalış'}
+                            </button>
+                            ${studyInUnit > 0 ? `
+                                <button onclick="startStudy(${unitNum}, 'study')" class="flex-1 bg-rose-400 hover:bg-rose-500 text-white py-3 rounded-2xl font-black text-sm game-btn">
+                                    Tekrarları Çalış
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHTML;
+            });
+        }
+
+        function goHome() {
+            document.getElementById('study-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('progress-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+            renderUnitSelection();
+            updateGlobalStats();
+        }
+
+        // --- 5. İLERLEME (KARNE) EKRANI ---
+        function showProgress() {
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('study-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            
+            document.getElementById('progress-screen').classList.remove('hidden');
+
+            const totalWords = wordDatabase.length; // 250
+            const learnedWords = userMemory.knownWords.length;
+            const progressPercent = Math.round((learnedWords / totalWords) * 100);
+
+            document.getElementById('total-progress-percent').innerText = `%${progressPercent}`;
+            document.getElementById('total-learned-text').innerText = learnedWords;
+            
+            // Animasyonlu bar doluşu
+            setTimeout(() => {
+                document.getElementById('total-progress-bar').style.width = `${progressPercent}%`;
+            }, 100);
+
+            const listContainer = document.getElementById('unit-progress-list');
+            listContainer.innerHTML = '';
+
+            const units = [...new Set(wordDatabase.map(w => w.unit))];
+            units.forEach(unitNum => {
+                const unitWords = wordDatabase.filter(w => w.unit === unitNum);
+                const unitName = unitWords[0].unitName;
+                const unitWordIds = unitWords.map(w => w.id);
+                const knownInUnit = userMemory.knownWords.filter(id => unitWordIds.includes(id)).length;
+                const totalInUnit = unitWords.length;
+                const unitPercent = Math.round((knownInUnit / totalInUnit) * 100);
+
+                let badge = "🌱";
+                if(unitPercent === 100) badge = "🏆";
+                else if(unitPercent > 50) badge = "⭐";
+
+                const html = `
+                    <div class="bg-slate-50 border-2 border-slate-100 rounded-xl p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${badge}</span>
+                            <div class="text-left">
+                                <p class="font-black text-slate-700 text-sm uppercase">Unit ${unitNum}</p>
+                                <p lang="en" class="font-bold text-slate-500 text-xs">${unitName}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-black text-purple-600">${knownInUnit} / ${totalInUnit}</p>
+                            <div class="w-24 bg-slate-200 rounded-full h-2 mt-1">
+                                <div class="bg-purple-500 h-2 rounded-full" style="width: ${unitPercent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listContainer.innerHTML += html;
+            });
+        }
+
+        // --- 6. KART ÇALIŞMA SİSTEMİ ---
+        function startStudy(unitNum, mode) {
+            newlyLearned = 0;
+            currentMode = mode;
+            currentUnitInfo = { num: unitNum, name: wordDatabase.find(w => w.unit === unitNum).unitName };
+            
+            let words = wordDatabase.filter(w => w.unit === unitNum);
+            
+            if (mode === 'study') {
+                words = words.filter(w => userMemory.studyWords.includes(w.id));
+            } else {
+                words = words.sort((a, b) => {
+                    const aKnown = userMemory.knownWords.includes(a.id) ? 1 : 0;
+                    const bKnown = userMemory.knownWords.includes(b.id) ? 1 : 0;
+                    return aKnown - bKnown;
+                });
+            }
+
+            queue = words;
+            currentIndex = 0;
+            
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('study-screen').classList.remove('hidden');
+            document.getElementById('study-screen').classList.add('flex');
+            
+            renderCard();
+            showToast(`Unit ${unitNum}: ${currentUnitInfo.name} Başlıyor! 🚀`);
+        }
+
+        function flipCard() {
+            const card = document.getElementById('flashcard');
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                card.classList.add('is-flipped');
+            } else {
+                card.classList.remove('is-flipped');
+            }
+        }
+
+        function playAudio(event) {
+            event.stopPropagation(); 
+            const textToRead = queue[currentIndex].en;
+            const utterance = new SpeechSynthesisUtterance(textToRead);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.85; 
+            utterance.pitch = 1.1; 
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function renderCard() {
+            if (currentIndex >= queue.length) {
+                startQuiz();
+                return;
+            }
+
+            const currentWord = queue[currentIndex];
+            const cardElement = document.getElementById('flashcard');
+            const sceneElement = document.getElementById('card-scene');
+
+            cardElement.classList.remove('is-flipped');
+            isFlipped = false;
+            
+            sceneElement.classList.remove('slide-out-left', 'slide-out-right', 'slide-in');
+            sceneElement.style.opacity = '0';
+            
+            setTimeout(() => {
+                sceneElement.classList.add('slide-in');
+                sceneElement.style.opacity = '1';
+                
+                document.getElementById('current-unit-title').innerText = `Unit ${currentUnitInfo.num}: ${currentUnitInfo.name}`;
+                document.getElementById('word-icon').innerText = currentWord.icon;
+                document.getElementById('word-en').innerText = currentWord.en;
+                document.getElementById('word-tr').innerText = currentWord.tr;
+                document.getElementById('word-ex').innerText = `"${currentWord.ex}"`;
+
+                document.getElementById('progress-text').innerText = `${currentIndex + 1} / ${queue.length}`;
+                document.getElementById('progress-bar').style.width = `${((currentIndex + 1) / queue.length) * 100}%`;
+            }, 50);
+        }
+
+        function updateMemory(wordId, status) {
+            const wasKnown = userMemory.knownWords.includes(wordId);
+            
+            userMemory.knownWords = userMemory.knownWords.filter(id => id !== wordId);
+            userMemory.studyWords = userMemory.studyWords.filter(id => id !== wordId);
+            
+            if (status === 'known') {
+                userMemory.knownWords.push(wordId);
+                if(!wasKnown) newlyLearned++; // Sadece yeni öğrenildiyse skoru artır
+            } else {
+                userMemory.studyWords.push(wordId);
+            }
+            
+            localStorage.setItem('meryemMemory', JSON.stringify(userMemory));
+            updateGlobalStats();
+            sendToGoogleSheets("KART_CALISMASI", wordId, status);
+        }
+
+        function markAsKnown() {
+            const currentWord = queue[currentIndex];
+            updateMemory(currentWord.id, 'known');
+            if(Math.random() > 0.8) showToast("Süpersin! Öğrendin bile! 🌟");
+            animateAndNext('right');
+        }
+
+        function markAsStudy() {
+            const currentWord = queue[currentIndex];
+            updateMemory(currentWord.id, 'study');
+            animateAndNext('left');
+        }
+
+        function animateAndNext(direction) {
+            const sceneElement = document.getElementById('card-scene');
+            
+            if (direction === 'right') {
+                sceneElement.classList.add('slide-out-right');
+            } else {
+                sceneElement.classList.add('slide-out-left');
+            }
+
+            document.getElementById('action-buttons').style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                currentIndex++;
+                renderCard();
+                document.getElementById('action-buttons').style.pointerEvents = 'auto';
+            }, 500); 
+        }
+
+        // --- 7. ÖLÇME VE DEĞERLENDİRME (QUIZ) ---
+        function startQuiz() {
+            document.getElementById('study-screen').classList.add('hidden');
+            document.getElementById('study-screen').classList.remove('flex');
+            
+            const unitWords = wordDatabase.filter(w => w.unit === currentUnitInfo.num);
+            
+            // Çalışılan listeye göre sorular
+            let pool = (currentMode === 'study') ? queue : unitWords;
+            if(pool.length < 5) pool = unitWords; // Yeterli kelime yoksa tüm üniteden sor
+
+            let shuffled = [...pool].sort(() => 0.5 - Math.random());
+            let selectedWords = shuffled.slice(0, 5);
+            
+            quizQuestions = selectedWords.map(targetWord => {
+                let wrongOptions = unitWords.filter(w => w.id !== targetWord.id)
+                                            .sort(() => 0.5 - Math.random())
+                                            .slice(0, 3);
+                
+                let allOptions = [targetWord, ...wrongOptions].sort(() => 0.5 - Math.random());
+                
+                return { questionWord: targetWord, options: allOptions };
+            });
+
+            currentQuizIndex = 0;
+            quizScore = 0;
+            
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            showToast("Şimdi Öğrendiklerini Test Etme Zamanı! 📝");
+            renderQuizQuestion();
+        }
+
+        function renderQuizQuestion() {
+            if (currentQuizIndex >= quizQuestions.length) {
+                showResultScreen();
+                return;
+            }
+
+            const q = quizQuestions[currentQuizIndex];
+            document.getElementById('quiz-question').innerText = q.questionWord.tr; 
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-4 rounded-2xl bg-slate-50 text-slate-700 font-black text-lg quiz-opt border-slate-200`;
+                btn.innerHTML = `<span class="text-2xl mr-2">${opt.icon}</span> <span lang="en">${opt.en}</span>`;
+                btn.onclick = () => handleQuizAnswer(btn, opt.id === q.questionWord.id, q.questionWord);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleQuizAnswer(buttonElement, isCorrect, targetWord) {
+            const buttons = document.getElementById('quiz-options').querySelectorAll('button');
+            buttons.forEach(btn => btn.style.pointerEvents = 'none');
+
+            if (isCorrect) {
+                buttonElement.classList.replace('bg-slate-50', 'bg-emerald-100');
+                buttonElement.classList.replace('border-slate-200', 'border-emerald-400');
+                buttonElement.classList.replace('text-slate-700', 'text-emerald-700');
+                quizScore++;
+                updateMemory(targetWord.id, 'known');
+                showToast("Doğru! 🎉");
+            } else {
+                buttonElement.classList.replace('bg-slate-50', 'bg-rose-100');
+                buttonElement.classList.replace('border-slate-200', 'border-rose-400');
+                buttonElement.classList.replace('text-slate-700', 'text-rose-700');
+                
+                buttons.forEach(btn => {
+                    if (btn.innerText.includes(targetWord.en)) {
+                        btn.classList.replace('bg-slate-50', 'bg-emerald-50');
+                        btn.classList.replace('border-slate-200', 'border-emerald-300');
+                    }
+                });
+                updateMemory(targetWord.id, 'study');
+                showToast("Oops! Bir dahakine! 💪");
+            }
+
+            sendToGoogleSheets("QUIZ", targetWord.id, isCorrect ? "DOĞRU" : "YANLIŞ");
+
+            setTimeout(() => {
+                currentQuizIndex++;
+                renderQuizQuestion();
+            }, 1500);
+        }
+
+        function showResultScreen() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            document.getElementById('quiz-score').innerText = `${quizScore} / ${quizQuestions.length}`;
+            document.getElementById('new-learned').innerText = `+${newlyLearned} Kelime`;
+            
+            if (quizScore === quizQuestions.length) {
+                document.getElementById('result-msg').innerText = "Kusursuz! Tüm soruları doğru bildin!";
+                showToast("🏆 Muhteşem iş çıkardın!");
+            } else if (quizScore >= quizQuestions.length / 2) {
+                document.getElementById('result-msg').innerText = "Çok iyi! Biraz daha tekrarla mükemmel olacak.";
+            } else {
+                document.getElementById('result-msg').innerText = "Tekrar etmek her zaman işe yarar. Pes etme!";
+            }
+        }
+
+        // --- 8. YARDIMCI FONKSİYONLAR ---
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = message;
+            
+            toast.classList.remove('toast-leave', 'opacity-0');
+            toast.classList.add('toast-enter');
+            
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-leave');
+            }, 2500);
+        }
+
+        function sendToGoogleSheets(actionType, wordId, resultText) {
+            if (!GOOGLE_WEBAPP_URL) return;
+            
+            const word = wordDatabase.find(w => w.id === wordId);
+            if(!word) return;
+
+            const url = new URL(GOOGLE_WEBAPP_URL);
+            url.searchParams.append("studentName", STUDENT_NAME);
+            url.searchParams.append("actionType", actionType); 
+            url.searchParams.append("unit", `Unit ${word.unit}`);
+            url.searchParams.append("questionText", word.tr); 
+            url.searchParams.append("kazanim", "Kelime: " + word.en);
+            url.searchParams.append("result", resultText); 
+
+            fetch(url.toString(), { method: 'GET', mode: 'no-cors' })
+                .catch(err => console.log("Gönderim sessizce hata verdi", err));
+        }
+
+    </script>
+</body>
+</html>
