@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Doctor Introduction</title>
+    <title>Karaoke Doctor Introduction</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -20,11 +20,24 @@
             padding: 30px;
             border-radius: 20px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-            max-width: 400px;
+            max-width: 500px;
             border: 3px solid #00a8cc;
         }
         h2 { color: #007086; margin-bottom: 20px; }
-        p { font-size: 1.2rem; line-height: 1.6; color: #333; margin-bottom: 25px; }
+        #speechText { 
+            font-size: 1.5rem; 
+            line-height: 2; 
+            color: #333; 
+            margin-bottom: 25px; 
+            text-align: center;
+        }
+        /* Boyama (Vurgu) Efekti */
+        .highlight {
+            background-color: yellow;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
         button {
             background-color: #00a8cc;
             color: white;
@@ -33,54 +46,78 @@
             font-size: 1.1rem;
             border-radius: 50px;
             cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto;
         }
-        button:hover {
-            background-color: #007086;
-            transform: scale(1.05);
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
-        .icon { margin-right: 10px; font-size: 1.4rem; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>🩺 I am a Doctor!</h2>
-    <p id="textToSpeak">
-        Hello! <br>
-        My name is Meryem. <br>
-        I am a children's doctor. <br>
-        I work at a hospital. <br>
-        I wear a white coat. <br>
-        I help ill kids. <br>
-        I love my job. <br>
-        Thank you!
-    </p>
+    <div id="speechText">
+        </div>
     
-    <button onclick="speak()">
-        <span class="icon">🔊</span> Listen & Repeat
+    <button id="playBtn" onclick="speak()">
+        <span style="margin-right:10px;">🔊</span> Start Karaoke
     </button>
 </div>
 
 <script>
-    function speak() {
-        const text = document.getElementById('textToSpeak').innerText;
-        const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Dil ayarı: İngilizce (Amerikan veya İngiliz seçilebilir)
-        utterance.lang = 'en-US';
-        
-        // Hız ayarı: 0.8 (Biraz yavaşlattım ki öğrenci rahat anlasın)
-        utterance.rate = 0.8; 
-        
-        // Ses perdesi
-        utterance.pitch = 1;
+    const text = "Hello! My name is Meryem. I am a children's doctor. I work at a hospital. I wear a white coat. I help ill kids. I love my job. Thank you!";
+    const container = document.getElementById('speechText');
+    const playBtn = document.getElementById('playBtn');
 
-        // Tarayıcıdaki seslendirmeyi başlat
+    // Metni kelimelere bölüp span içine alalım (HTML yapısını korumak için)
+    const words = text.split(" ");
+    container.innerHTML = words.map(word => `<span>${word}</span>`).join(" ");
+
+    function speak() {
+        // Daha önceki seslendirmeyi durdur
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.7; // 4. sınıf için hızı biraz daha düşürdüm
+
+        const spans = container.querySelectorAll('span');
+        
+        // Ses başladığında butonu pasif yap
+        utterance.onstart = () => {
+            playBtn.disabled = true;
+        };
+
+        // Kelime değiştikçe çalışacak olan fonksiyon (Karaoke kalbi)
+        utterance.onboundary = (event) => {
+            if (event.name === 'word') {
+                // Tüm vurguları temizle
+                spans.forEach(s => s.classList.remove('highlight'));
+                
+                // Okunan kelimenin indexini bul ve vurgula
+                // SpeechSynthesisUtterance charIndex ile karakter sırasını verir
+                let charCount = 0;
+                for (let i = 0; i < words.length; i++) {
+                    if (charCount >= event.charIndex) {
+                        spans[i].classList.add('highlight');
+                        break;
+                    }
+                    charCount += words[i].length + 1; // +1 boşluk için
+                }
+            }
+        };
+
+        // Bittiğinde vurguyu kaldır ve butonu aç
+        utterance.onend = () => {
+            spans.forEach(s => s.classList.remove('highlight'));
+            playBtn.disabled = false;
+        };
+
         window.speechSynthesis.speak(utterance);
     }
 </script>
